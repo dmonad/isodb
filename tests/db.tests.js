@@ -42,15 +42,15 @@ const x = kv.get('a')
 console.log(x)
 
 /**
- * @param {t.TestCase} _tc
+ * @param {t.TestCase} tc
  */
-export const testSomething = async _tc => {
-  await iso.deleteDB('test')
+export const testSomething = async tc => {
+  await iso.deleteDB(tc.testName)
   const def = { abc: { key: iso.StringKey, value: iso.AnyValue }, xyz: { key: iso.AutoKey, value: iso.AnyValue } }
   /**
    * @type {iso.IsoDB<typeof def>}
    */
-  const db = await iso.openDB('test', def)
+  const db = await iso.openDB(tc.testName, def)
   await db.transact(async tr => {
     const testValue = new iso.AnyValue({ test: 'someVal' })
     await tr.set('abc', new iso.StringKey('test'), testValue)
