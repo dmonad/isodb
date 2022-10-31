@@ -19,6 +19,22 @@ const encodeValue = value => {
 }
 
 /**
+ * @param {common.IKey} key
+ * @return {Uint8Array|string|number}
+ */
+const encodeKey = key => {
+  switch (key.constructor) {
+    case common.AutoKey:
+      return /** @type {common.AutoKey} */ (key).id
+    case common.StringKey:
+      return /** @type {common.StringKey} */ (key).id
+  }
+  const encoder = encoding.createEncoder()
+  key.encode(encoder)
+  return encoding.toUint8Array(encoder)
+}
+
+/**
  * @template {{[key: string]: common.ITableDef}} DEF
  */
 export class Transaction {
@@ -46,7 +62,7 @@ export class Transaction {
   async get (table, key) {
     const V = this.db.def[table].value
     const st = this.strs[table]
-    const v = /** @type {Uint8Array} */ (await idb.get(st, key.toBuf()))
+    const v = /** @type {Uint8Array} */ (await idb.get(st, encodeKey(key)))
     return /** @type {any} */ (V.decode(decoding.createDecoder(v)))
   }
 
@@ -59,7 +75,7 @@ export class Transaction {
    * @return {Promise<void>|void}
    */
   set (table, key, value) {
-    return idb.put(this.strs[table], encodeValue(value), key.toBuf())
+    return idb.put(this.strs[table], encodeValue(value), encodeKey(key))
   }
 
   /**

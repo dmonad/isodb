@@ -12,6 +12,7 @@ import * as encoding from 'lib0/encoding' // eslint-disable-line
 
 /**
  * @template {IAny} V
+ * @template {IKey} K
  * @implements {IValue}
  */
 export class AnyValue {
@@ -19,6 +20,10 @@ export class AnyValue {
    * @param {V} v
    */
   constructor (v) {
+    /**
+     * @type {K|null}
+     */
+    this.key = null
     this.v = v
   }
 
@@ -31,7 +36,7 @@ export class AnyValue {
 
   /**
    * @param {decoding.Decoder} decoder
-   * @return {AnyValue<any>}
+   * @return {AnyValue<any,any>}
    */
   static decode (decoder) {
     return new AnyValue(decoding.readAny(decoder))
@@ -42,6 +47,15 @@ export class AnyValue {
  * @interface
  */
 export class IValue {
+  constructor () {
+    /**
+     * Is null if this item has not been added yet.
+     *
+     * @type {IKey|null}
+     */
+    this.key = null
+  }
+
   /**
    * @param {encoding.Encoder} _encoder
    */
@@ -63,9 +77,9 @@ export class IValue {
  */
 export class IKey {
   /**
-   * @return {Uint8Array|number|string} May return buffer or 32bit int
+   * @param {encoding.Encoder} _encoder
    */
-  toBuf () {
+  encode (_encoder) {
     error.methodUnimplemented()
   }
 
@@ -77,7 +91,7 @@ export class IKey {
    * @param {decoding.Decoder} _decoder
 *  * @return {IKey}
    */
-  static fromBuf (_decoder) {
+  static decode (_decoder) {
     error.methodUnimplemented()
   }
 }
@@ -93,15 +107,18 @@ export class AutoKey {
     this.id = id
   }
 
-  toBuf () {
-    return this.id
+  /**
+   * @param {encoding.Encoder} encoder
+   */
+  encode (encoder) {
+    encoding.writeUint32(encoder, this.id)
   }
 
   /**
-   * @param {decoding.Decoder} _decoder
+   * @param {decoding.Decoder} decoder
    */
-  static fromBuf (_decoder) {
-    error.methodUnimplemented()
+  static decode (decoder) {
+    return new AutoKey(decoding.readUint32(decoder))
   }
 }
 
@@ -116,14 +133,17 @@ export class StringKey {
     this.id = id
   }
 
-  toBuf () {
-    return this.id
+  /**
+   * @param {encoding.Encoder} _encoder
+   */
+  encode (_encoder) {
+    error.methodUnimplemented()
   }
 
   /**
    * @param {decoding.Decoder} _decoder
    */
-  static fromBuf (_decoder) {
+  static decode (_decoder) {
     error.methodUnimplemented()
   }
 }
