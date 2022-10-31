@@ -23,19 +23,17 @@ export class AnyValue {
   }
 
   /**
-   * @return {Uint8Array}
+   * @param {encoding.Encoder} encoder
    */
-  toBuf () {
-    const encoder = encoding.createEncoder()
+  encode (encoder) {
     encoding.writeAny(encoder, this.v)
-    return encoding.toUint8Array(encoder)
   }
 
   /**
    * @param {decoding.Decoder} decoder
    * @return {AnyValue<any>}
    */
-  static fromBuf (decoder) {
+  static decode (decoder) {
     return new AnyValue(decoding.readAny(decoder))
   }
 }
@@ -45,9 +43,9 @@ export class AnyValue {
  */
 export class IValue {
   /**
-   * @return {Uint8Array}
+   * @param {encoding.Encoder} _encoder
    */
-  toBuf () {
+  encode (_encoder) {
     error.methodUnimplemented()
   }
 
@@ -55,7 +53,7 @@ export class IValue {
    * @param {decoding.Decoder} _decoder
 *  * @return {IValue}
    */
-  static fromBuf (_decoder) {
+  static decode (_decoder) {
     error.methodUnimplemented()
   }
 }

@@ -1,22 +1,25 @@
 
-import * as interfaces from './interfaces.js'
+import * as common from './common.js'
 import * as idb from 'lib0/indexeddb'
 import * as object from 'lib0/object'
+import * as encoding from 'lib0/encoding'
 import * as decoding from 'lib0/decoding'
 import * as error from 'lib0/error'
 
-export * from './interfaces.js'
+export * from './common.js'
 
-export class Keyy {
-  get () {}
-}
-
-export class SuperKey extends Keyy {
-  dtrn () {}
+/**
+ * @param {common.IValue} value
+ * @return {Uint8Array}
+ */
+const encodeValue = value => {
+  const encoder = encoding.createEncoder()
+  value.encode(encoder)
+  return encoding.toUint8Array(encoder)
 }
 
 /**
- * @template {{[key: string]: interfaces.ITableDef}} DEF
+ * @template {{[key: string]: common.ITableDef}} DEF
  */
 export class Transaction {
   /**
@@ -44,7 +47,7 @@ export class Transaction {
     const V = this.db.def[table].value
     const st = this.strs[table]
     const v = /** @type {Uint8Array} */ (await idb.get(st, key.toBuf()))
-    return /** @type {any} */ (V.fromBuf(decoding.createDecoder(v)))
+    return /** @type {any} */ (V.decode(decoding.createDecoder(v)))
   }
 
   /**
@@ -56,8 +59,7 @@ export class Transaction {
    * @return {Promise<void>|void}
    */
   set (table, key, value) {
-    // @ts-ignore
-    return idb.put(this.strs[table], value.toBuf(), key.toBuf())
+    return idb.put(this.strs[table], encodeValue(value), key.toBuf())
   }
 
   /**
@@ -69,17 +71,19 @@ export class Transaction {
    * @param {InstanceType<DEF[TABLE]["value"]>} value
    * @return {Promise<InstanceType<DEF[TABLE]["key"]>>}
    */
-  add (table, value) {
+  async add (table, value) {
     const KeyType = /** @type {any} */ (this.db.def[table].key)
-    if (KeyType !== interfaces.AutoKey) {
+    if (KeyType !== common.AutoKey) {
       throw error.create('Expected key to be an AutoKey')
     }
-    return idb.put(this.strs[table], value.toBuf()).then(k => new KeyType(k))
+    const encoder = encoding.createEncoder()
+    value.encode(encoder)
+    return idb.put(this.strs[table], encoding.toUint8Array(encoder)).then(k => new KeyType(k))
   }
 }
 
 /**
- * @template {interfaces.IDbDef} DEF
+ * @template {common.IDbDef} DEF
  */
 export class IsoDB {
   /**
@@ -105,14 +109,13 @@ export class IsoDB {
 
 /**
  * @param {string} name
- * @param {interfaces.IDbDef} def
+ * @param {common.IDbDef} def
  */
 export const openDB = (name, def) =>
   idb.openDB(name, db => {
     const stores = []
     for (const key in def) {
-      // @ts-ignore
-      const autoIncrement = def[key].key === interfaces.AutoKey
+      const autoIncrement = def[key].key === /** @type {any} */ (common.AutoKey)
       stores.push([key, { autoIncrement }])
     }
     idb.createStores(db, stores)
