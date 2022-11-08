@@ -6,6 +6,8 @@ import * as encoding from 'lib0/encoding'
 import * as decoding from 'lib0/decoding'
 import * as error from 'lib0/error'
 
+export const name = 'isodb-indexeddb'
+
 export * from './common.js'
 
 /**
@@ -92,9 +94,7 @@ export class Transaction {
     if (KeyType !== common.AutoKey) {
       throw error.create('Expected key to be an AutoKey')
     }
-    const encoder = encoding.createEncoder()
-    value.encode(encoder)
-    return idb.put(this.strs[table], encoding.toUint8Array(encoder)).then(k => new KeyType(k))
+    return idb.put(this.strs[table], encodeValue(value)).then(k => new KeyType(k))
   }
 }
 

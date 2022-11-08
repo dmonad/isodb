@@ -12,18 +12,13 @@ import * as encoding from 'lib0/encoding' // eslint-disable-line
 
 /**
  * @template {IAny} V
- * @template {IKey} K
- * @implements {IValue}
+ * @implements IValue
  */
 export class AnyValue {
   /**
    * @param {V} v
    */
   constructor (v) {
-    /**
-     * @type {K|null}
-     */
-    this.key = null
     this.v = v
   }
 
@@ -36,7 +31,7 @@ export class AnyValue {
 
   /**
    * @param {decoding.Decoder} decoder
-   * @return {AnyValue<any,any>}
+   * @return {AnyValue<any>}
    */
   static decode (decoder) {
     return new AnyValue(decoding.readAny(decoder))
@@ -47,15 +42,6 @@ export class AnyValue {
  * @interface
  */
 export class IValue {
-  constructor () {
-    /**
-     * Is null if this item has not been added yet.
-     *
-     * @type {IKey|null}
-     */
-    this.key = null
-  }
-
   /**
    * @param {encoding.Encoder} _encoder
    */
