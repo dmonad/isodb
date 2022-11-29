@@ -3,8 +3,8 @@ import * as t from 'lib0/testing'
 import * as isoIdb from '../src/browser.js'
 import * as isoLmdb from '../src/node.js'
 
-// const isoImpls = [isoIdb, isoLmdb]
-const isoImpls = [isoLmdb]
+const isoImpls = [isoIdb, isoLmdb]
+// const isoImpls = [isoLmdb]
 
 /**
  * @param {t.TestCase} tc

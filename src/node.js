@@ -83,7 +83,7 @@ export class Transaction {
     const V = this.db.def[table].value
     const buf = this.tr.getBinaryUnsafe(this.db.dbis[/** @type {string} */ (table)], encodeKey(key))
     const res = /** @type {any} */ (V.decode(decoding.createDecoder(buf)))
-    this.db.env.detachBuffer(buf)
+    this.db.env.detachBuffer(buf.buffer)
     return res
   }
 
