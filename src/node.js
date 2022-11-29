@@ -5,6 +5,7 @@ import * as error from 'lib0/error'
 import lmdb from 'node-lmdb'
 // @ts-ignore
 import fs from 'node:fs/promises'
+import { Buffer } from 'node:buffer'
 
 export * from './common.js'
 
@@ -25,13 +26,21 @@ const getLmdbKeyType = keytype => {
 }
 
 /**
+ * @param {encoding.Encoder} encoder
+ */
+const encoderToBuffer = (encoder) => {
+  const arr = encoding.toUint8Array(encoder)
+  return Buffer.from(arr.buffer, arr.byteOffset, arr.byteLength)
+}
+
+/**
  * @param {common.IValue} value
  * @return {Uint8Array}
  */
 const encodeValue = value => {
   const encoder = encoding.createEncoder()
   value.encode(encoder)
-  return encoding.toUint8Array(encoder)
+  return encoderToBuffer(encoder)
 }
 
 /**
@@ -47,7 +56,7 @@ const encodeKey = key => {
   }
   const encoder = encoding.createEncoder()
   key.encode(encoder)
-  return encoding.toUint8Array(encoder)
+  return encoderToBuffer(encoder)
 }
 
 /**
@@ -56,14 +65,11 @@ const encodeKey = key => {
 export class Transaction {
   /**
    * @param {IsoDB<DEF>} db
+   * @param {lmdb.Txn} txn
    */
-  constructor (db) {
+  constructor (db, txn) {
     this.db = db
-    this.tr = db.env.beginTxn()
-  }
-
-  _done () {
-    this.tr.commit()
+    this.tr = txn
   }
 
   /**
@@ -90,7 +96,7 @@ export class Transaction {
    * @return {Promise<void>|void}
    */
   set (table, key, value) {
-    this.tr.putBinary(this.db.dbis[/** @type {string} */ (table)], encodeValue(value), encodeKey(key))
+    this.tr.putBinary(this.db.dbis[/** @type {string} */ (table)], encodeKey(key), encodeValue(value))
   }
 
   /**
@@ -114,7 +120,7 @@ export class Transaction {
     const cursor = new lmdb.Cursor(this.tr, dbi, getLmdbKeyType(KeyType))
     const lastKey = cursor.goToLast()
     const key = lastKey === null ? 0 : lastKey + 1
-    this.tr.putBinary(this.db.dbis[/** @type {string} */ (table)], encodeValue(value), key)
+    this.tr.putBinary(this.db.dbis[/** @type {string} */ (table)], key, encodeValue(value))
     return /** @type {any} */ (new common.AutoKey(key))
   }
 }
@@ -145,13 +151,14 @@ export class IsoDB {
   /**
    * @param {function(Transaction<DEF>): Promise<void>} f
    */
-  transact (f) {
+  async transact (f) {
+    const txn = this.env.beginTxn()
     /**
      * @type {Transaction<DEF>}
      */
-    const tr = new Transaction(this)
-    const res = f(tr)
-    tr._done()
+    const tr = new Transaction(this, txn)
+    const res = await f(tr)
+    tr.tr.commit()
     return res
   }
 
