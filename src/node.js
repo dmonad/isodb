@@ -35,7 +35,7 @@ const encoderToBuffer = (encoder) => {
 
 /**
  * @param {common.IValue} value
- * @return {Uint8Array}
+ * @return {Buffer}
  */
 const encodeValue = value => {
   const encoder = encoding.createEncoder()
@@ -45,7 +45,7 @@ const encodeValue = value => {
 
 /**
  * @param {common.IKey} key
- * @return {Uint8Array|string|number}
+ * @return {Buffer|string|number}
  */
 const encodeKey = key => {
   switch (key.constructor) {
@@ -93,9 +93,9 @@ export class Transaction {
    * @param {TABLE} table
    * @param {InstanceType<DEF[TABLE]["key"]>} key
    * @param {InstanceType<DEF[TABLE]["value"]>} value
-   * @return {Promise<void>|void}
+   * @return {Promise<void>}
    */
-  set (table, key, value) {
+  async set (table, key, value) {
     this.tr.putBinary(this.db.dbis[/** @type {string} */ (table)], encodeKey(key), encodeValue(value))
   }
 

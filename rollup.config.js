@@ -2,9 +2,9 @@ import resolve from '@rollup/plugin-node-resolve'
 import commonjs from '@rollup/plugin-commonjs'
 
 export default [{
-  input: './tests/index.js',
+  input: './tests/index.browser.js',
   output: {
-    file: './dist/test.js',
+    file: './dist/test.browser.js',
     format: 'iife',
     sourcemap: true
   },
