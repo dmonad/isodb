@@ -67,6 +67,7 @@
   },
   "dependencies": {
     "lib0": "^0.2.55",
+    "lmdb": "^2.7.2",
     "node-lmdb": "^0.9.7"
   }
 }

@@ -45,7 +45,7 @@ export const testBenchmark = async tc => {
   for (const iso of isoImpls) {
     await t.groupAsync(iso.name, async () => {
       await iso.deleteDB(tc.testName)
-      const n = 10000
+      const n = 5000
       const def = { abc: { key: iso.StringKey, value: iso.AnyValue }, auto: { key: iso.AutoKey, value: iso.AnyValue } }
       await t.measureTimeAsync(`${iso.name}: Time to insert ${n} elements`, async () => {
         /**

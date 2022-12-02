@@ -2,9 +2,10 @@ import * as common from './common.js'
 import * as encoding from 'lib0/encoding'
 import * as decoding from 'lib0/decoding'
 import * as error from 'lib0/error'
-import lmdb from 'node-lmdb'
+import lmdb from 'lmdb'
 // @ts-ignore
 import fs from 'node:fs/promises'
+import path from 'node:path'
 import { Buffer } from 'node:buffer'
 
 export * from './common.js'
@@ -131,35 +132,34 @@ export class Transaction {
  */
 export class IsoDB {
   /**
-   * @param {lmdb.Env} env
+   * @param {lmdb.RootDatabase} env
 *  * @param {DEF} def
    */
   constructor (env, def) {
     this.def = def
     this.env = env
     /**
-     * @type {{[key: string]: lmdb.Dbi}}
+     * @type {{[key: string]: lmdb.Database}}
      */
     this.dbis = {}
     for (const dbname in def) {
       const d = def[dbname]
       /**
-       * @type {any}
+       * @type {lmdb.DatabaseOptions & { name: string }}
        */
       const conf = {
         name: dbname,
-        create: true
+        encoding: 'binary',
+        keyEncoding: 'binary'
       }
       // @ts-ignore
       if (d.key === common.AutoKey) {
-        conf.keyIsUint32 = true
+        conf.keyEncoding = 'uint32'
       // @ts-ignore
       } else if (d.key === common.StringKey) {
-        conf.keyIsString = true
-      } else {
-        conf.keyIsBuffer = true
+        conf.keyEncoding = 'ordered-binary'
       }
-      this.dbis[dbname] = env.openDbi(conf)
+      this.dbis[dbname] = env.openDB(conf)
     }
   }
 
@@ -186,16 +186,15 @@ export class IsoDB {
 }
 
 /**
- * @param {string} path
+ * @param {string} location
  * @param {common.IDbDef} def
  */
-export const openDB = async (path, def) => {
-  await fs.mkdir(path, { recursive: true })
-  const env = new lmdb.Env()
-  env.open({
-    path,
-    mapSize: 2 * 1024 * 1024 * 1024, // maximum database size
+export const openDB = async (location, def) => {
+  await fs.mkdir(path.dirname(location), { recursive: true })
+  const env = lmdb.open({
+    path: location,
     maxDbs: Object.keys(def).length
+    // compression: true // @todo add an option to enable compression when available
   })
   return new IsoDB(env, def)
 }
