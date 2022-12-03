@@ -2,9 +2,10 @@ import * as common from './common.js'
 import * as encoding from 'lib0/encoding'
 import * as decoding from 'lib0/decoding'
 import * as error from 'lib0/error'
-import lmdb from 'node-lmdb'
+import lmdb from 'lmdb'
 // @ts-ignore
 import fs from 'node:fs/promises'
+import path from 'node:path'
 import { Buffer } from 'node:buffer'
 
 export * from './common.js'
@@ -13,16 +14,17 @@ export const name = 'isodb-lmdb'
 
 /**
  * @param {typeof common.IKey} keytype
- * @return {any}
+ * @return {'binary'|'uint32'|'ordered-binary'}
  */
 const getLmdbKeyType = keytype => {
   switch (/** @type {any} */ (keytype)) {
     case common.AutoKey:
-      return { keyIsUint32: true }
+      return 'uint32'
     case common.StringKey:
-      return { keyIsString: true }
+      return 'ordered-binary'
+    default:
+      return 'binary'
   }
-  return { keyIsBuffer: true }
 }
 
 /**
@@ -65,11 +67,9 @@ const encodeKey = key => {
 export class Transaction {
   /**
    * @param {IsoDB<DEF>} db
-   * @param {lmdb.Txn} txn
    */
-  constructor (db, txn) {
+  constructor (db) {
     this.db = db
-    this.tr = txn
   }
 
   /**
@@ -81,11 +81,9 @@ export class Transaction {
    */
   async get (table, key) {
     const V = this.db.def[table].value
-    // const buf = this.tr.getBinaryUnsafe(this.db.dbis[/** @type {string} */ (table)], encodeKey(key))
-    const buf = this.tr.getBinary(this.db.dbis[/** @type {string} */ (table)], encodeKey(key))
-    const res = /** @type {any} */ (V.decode(decoding.createDecoder(buf)))
-    // this.db.env.detachBuffer(buf.buffer)
-    return res
+    const dbi = this.db.dbis[/** @type {string} */ (table)]
+    const buf = dbi.getBinaryFast(encodeKey(key))
+    return buf ? /** @type {any} */ (V.decode(decoding.createDecoder(buf))) : undefined
   }
 
   /**
@@ -97,7 +95,8 @@ export class Transaction {
    * @return {Promise<void>}
    */
   async set (table, key, value) {
-    this.tr.putBinary(this.db.dbis[/** @type {string} */ (table)], encodeKey(key), encodeValue(value))
+    const dbi = this.db.dbis[/** @type {string} */ (table)]
+    await dbi.put(encodeKey(key), encodeValue(value))
   }
 
   /**
@@ -115,13 +114,9 @@ export class Transaction {
       throw error.create('Expected key to be an AutoKey')
     }
     const dbi = this.db.dbis[/** @type {string} */ (table)]
-    /**
-     * @type {lmdb.Cursor<number>}
-     */
-    const cursor = new lmdb.Cursor(this.tr, dbi, getLmdbKeyType(KeyType))
-    const lastKey = cursor.goToLast()
-    const key = lastKey === null ? 0 : lastKey + 1
-    this.tr.putBinary(this.db.dbis[/** @type {string} */ (table)], key, encodeValue(value))
+    const [lastKey] = dbi.getKeys({ reverse: true, limit: 1 }).asArray
+    const key = lastKey == null ? 0 : /** @type {number} */ (lastKey) + 1
+    await dbi.put(key, encodeValue(value))
     return /** @type {any} */ (new common.AutoKey(key))
   }
 }
@@ -131,50 +126,43 @@ export class Transaction {
  */
 export class IsoDB {
   /**
-   * @param {lmdb.Env} env
+   * @param {lmdb.RootDatabase} env
 *  * @param {DEF} def
    */
   constructor (env, def) {
     this.def = def
     this.env = env
     /**
-     * @type {{[key: string]: lmdb.Dbi}}
+     * @type {{[key: string]: lmdb.Database}}
      */
     this.dbis = {}
     for (const dbname in def) {
       const d = def[dbname]
       /**
-       * @type {any}
+       * @type {lmdb.DatabaseOptions & { name: string }}
        */
       const conf = {
         name: dbname,
-        create: true
+        encoding: 'binary',
+        keyEncoding: getLmdbKeyType(d.key)
       }
-      // @ts-ignore
-      if (d.key === common.AutoKey) {
-        conf.keyIsUint32 = true
-      // @ts-ignore
-      } else if (d.key === common.StringKey) {
-        conf.keyIsString = true
-      } else {
-        conf.keyIsBuffer = true
-      }
-      this.dbis[dbname] = env.openDbi(conf)
+      this.dbis[dbname] = env.openDB(conf)
     }
   }
 
   /**
+   * @todo make sure that transactions are executed one after another
+   *
    * @param {function(Transaction<DEF>): Promise<void>} f
    */
   async transact (f) {
-    const txn = this.env.beginTxn()
-    /**
-     * @type {Transaction<DEF>}
-     */
-    const tr = new Transaction(this, txn)
-    const res = await f(tr)
-    tr.tr.commit()
-    return res
+    return this.env.transaction(() => {
+      /**
+       * @type {Transaction<DEF>}
+       */
+      const tr = new Transaction(this)
+      return f(tr)
+    })
   }
 
   destroy () {
@@ -186,16 +174,15 @@ export class IsoDB {
 }
 
 /**
- * @param {string} path
+ * @param {string} location
  * @param {common.IDbDef} def
  */
-export const openDB = async (path, def) => {
-  await fs.mkdir(path, { recursive: true })
-  const env = new lmdb.Env()
-  env.open({
-    path,
-    mapSize: 2 * 1024 * 1024 * 1024, // maximum database size
+export const openDB = async (location, def) => {
+  await fs.mkdir(path.dirname(location), { recursive: true })
+  const env = lmdb.open({
+    path: location,
     maxDbs: Object.keys(def).length
+    // compression: true // @todo add an option to enable compression when available
   })
   return new IsoDB(env, def)
 }
