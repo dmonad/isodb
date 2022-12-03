@@ -151,8 +151,6 @@ export class IsoDB {
   }
 
   /**
-   * @todo make sure that transactions are executed one after another
-   *
    * @param {function(Transaction<DEF>): Promise<void>} f
    */
   async transact (f) {
