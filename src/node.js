@@ -75,28 +75,28 @@ export class Transaction {
   /**
    * @template {keyof DEF} TABLE
    *
-   * @param {TABLE} table
+   * @param {TABLE} tablename
    * @param {InstanceType<DEF[TABLE]["key"]>} key
    * @return {Promise<InstanceType<DEF[TABLE]["value"]>>}
    */
-  async get (table, key) {
-    const V = this.db.def[table].value
-    const dbi = this.db.dbis[/** @type {string} */ (table)]
-    const buf = dbi.getBinaryFast(encodeKey(key))
+  async get (tablename, key) {
+    const V = this.db.def[tablename].value
+    const table = this.db.tables[/** @type {string} */ (tablename)]
+    const buf = table.getBinaryFast(encodeKey(key))
     return buf ? /** @type {any} */ (V.decode(decoding.createDecoder(buf))) : undefined
   }
 
   /**
    * @template {keyof DEF} TABLE
    *
-   * @param {TABLE} table
+   * @param {TABLE} tablename
    * @param {InstanceType<DEF[TABLE]["key"]>} key
    * @param {InstanceType<DEF[TABLE]["value"]>} value
    * @return {Promise<void>}
    */
-  async set (table, key, value) {
-    const dbi = this.db.dbis[/** @type {string} */ (table)]
-    await dbi.put(encodeKey(key), encodeValue(value))
+  async set (tablename, key, value) {
+    const table = this.db.tables[/** @type {string} */ (tablename)]
+    await table.put(encodeKey(key), encodeValue(value))
   }
 
   /**
@@ -104,19 +104,19 @@ export class Transaction {
    *
    * @template {keyof DEF} TABLE
    *
-   * @param {TABLE} table
+   * @param {TABLE} tablename
    * @param {InstanceType<DEF[TABLE]["value"]>} value
    * @return {Promise<InstanceType<DEF[TABLE]["key"]>>}
    */
-  async add (table, value) {
-    const KeyType = /** @type {any} */ (this.db.def[table].key)
+  async add (tablename, value) {
+    const KeyType = /** @type {any} */ (this.db.def[tablename].key)
     if (KeyType !== common.AutoKey) {
       throw error.create('Expected key to be an AutoKey')
     }
-    const dbi = this.db.dbis[/** @type {string} */ (table)]
-    const [lastKey] = dbi.getKeys({ reverse: true, limit: 1 }).asArray
+    const table = this.db.tables[/** @type {string} */ (tablename)]
+    const [lastKey] = table.getKeys({ reverse: true, limit: 1 }).asArray
     const key = lastKey == null ? 0 : /** @type {number} */ (lastKey) + 1
-    await dbi.put(key, encodeValue(value))
+    await table.put(key, encodeValue(value))
     return /** @type {any} */ (new common.AutoKey(key))
   }
 }
@@ -135,7 +135,7 @@ export class IsoDB {
     /**
      * @type {{[key: string]: lmdb.Database}}
      */
-    this.dbis = {}
+    this.tables = {}
     for (const dbname in def) {
       const d = def[dbname]
       /**
@@ -146,7 +146,7 @@ export class IsoDB {
         encoding: 'binary',
         keyEncoding: getLmdbKeyType(d.key)
       }
-      this.dbis[dbname] = env.openDB(conf)
+      this.tables[dbname] = env.openDB(conf)
     }
   }
 
@@ -166,8 +166,8 @@ export class IsoDB {
   }
 
   destroy () {
-    for (const key in this.dbis) {
-      this.dbis[key].close()
+    for (const key in this.tables) {
+      this.tables[key].close()
     }
     this.env.close()
   }
