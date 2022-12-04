@@ -24,11 +24,14 @@ export const testIterator = async tc => {
   for (const iso of isoImpls) {
     await t.groupAsync(iso.name, async () => {
       await iso.deleteDB(getDbName(tc.testName))
-      const def = { abc: { key: iso.StringKey, value: iso.AnyValue }, auto: { key: iso.AutoKey, value: iso.AnyValue } }
+      const def = { strings: { key: iso.StringKey, value: iso.AnyValue }, auto: { key: iso.AutoKey, value: iso.AnyValue } }
       const db = await iso.openDB(getDbName(tc.testName), def)
       db.transact(tr => {
         for (let i = 1; i < 30; i++) {
           tr.tables.auto.add(new iso.AnyValue({ i }))
+        }
+        for (let i = 1; i < 9; i++) {
+          tr.tables.strings.set(new iso.StringKey(i + ''), new iso.AnyValue(i + ''))
         }
       })
       await db.transact(async tr => {
@@ -71,7 +74,112 @@ export const testIterator = async tc => {
           t.compare({ i: k.id }, v.v)
           read.push(k.id)
         })
+        t.assert(read.length === 2 && read.every((v, index) => v === index + 2))
+      })
+      await db.transact(async tr => {
+        /**
+         * @type {Array<number>}
+         */
+        const read = []
+        await tr.tables.auto.iterate({ start: new iso.AutoKey(2), end: new iso.AutoKey(3), startExclusive: true }, (cursor) => {
+          const k = cursor.key
+          const v = cursor.value
+          t.compare({ i: k.id }, v.v)
+          read.push(k.id)
+        })
+        t.assert(read.length === 1 && read.every((v, index) => v === index + 3))
+      })
+      await db.transact(async tr => {
+        /**
+         * @type {Array<number>}
+         */
+        const read = []
+        await tr.tables.auto.iterate({ start: new iso.AutoKey(2), end: new iso.AutoKey(3), endExclusive: true }, (cursor) => {
+          const k = cursor.key
+          const v = cursor.value
+          t.compare({ i: k.id }, v.v)
+          read.push(k.id)
+        })
         t.assert(read.length === 1 && read.every((v, index) => v === index + 2))
+      })
+      await db.transact(async tr => {
+        /**
+         * @type {Array<number>}
+         */
+        const read = []
+        await tr.tables.auto.iterate({ start: new iso.AutoKey(2), startExclusive: true }, (cursor) => {
+          const k = cursor.key
+          const v = cursor.value
+          t.compare({ i: k.id }, v.v)
+          read.push(k.id)
+        })
+        t.assert(read.length === 27 && read.every((v, index) => v === index + 3))
+      })
+      await db.transact(async tr => {
+        /**
+         * @type {Array<number>}
+         */
+        const read = []
+        await tr.tables.auto.iterate({ end: new iso.AutoKey(3), endExclusive: true }, (cursor) => {
+          const k = cursor.key
+          const v = cursor.value
+          t.compare({ i: k.id }, v.v)
+          read.push(k.id)
+        })
+        t.assert(read.length === 2 && read.every((v, index) => v === index + 1))
+      })
+      await db.transact(async tr => {
+        /**
+         * @type {Array<number>}
+         */
+        const read = []
+        await tr.tables.auto.iterate({ start: new iso.AutoKey(2) }, (cursor) => {
+          const k = cursor.key
+          const v = cursor.value
+          t.compare({ i: k.id }, v.v)
+          read.push(k.id)
+        })
+        t.assert(read.length === 28 && read.every((v, index) => v === index + 2))
+      })
+      await db.transact(async tr => {
+        /**
+         * @type {Array<number>}
+         */
+        const read = []
+        await tr.tables.auto.iterate({ end: new iso.AutoKey(3) }, (cursor) => {
+          const k = cursor.key
+          const v = cursor.value
+          t.compare({ i: k.id }, v.v)
+          read.push(k.id)
+        })
+        t.assert(read.length === 3 && read.every((v, index) => v === index + 1))
+      })
+      // working on strings
+      await db.transact(async tr => {
+        /**
+         * @type {Array<string>}
+         */
+        const read = []
+        await tr.tables.strings.iterate({ start: new iso.StringKey('1'), end: new iso.StringKey('3') }, (cursor) => {
+          const k = cursor.key
+          const v = cursor.value
+          t.compare(k.id, v.v)
+          read.push(k.id)
+        })
+        t.assert(read.length === 3 && read.every((v, index) => v === '' + (index + 1)))
+      })
+      await db.transact(async tr => {
+        /**
+         * @type {Array<string>}
+         */
+        const read = []
+        await tr.tables.strings.iterate({ start: new iso.StringKey('1'), end: new iso.StringKey('3'), startExclusive: true, endExclusive: true }, (cursor) => {
+          const k = cursor.key
+          const v = cursor.value
+          t.compare(k.id, v.v)
+          read.push(k.id)
+        })
+        t.assert(read.length === 1 && read.every((v, index) => v === '' + (index + 2)))
       })
     })
   }
@@ -156,7 +264,7 @@ export const testBenchmark = async tc => {
   for (const iso of isoImpls) {
     await t.groupAsync(iso.name, async () => {
       await iso.deleteDB(getDbName(tc.testName))
-      const n = 5000
+      const n = 1000
       const def = { abc: { key: iso.StringKey, value: iso.AnyValue }, auto: { key: iso.AutoKey, value: iso.AnyValue } }
       await t.measureTimeAsync(`${iso.name}: Time to insert ${n} elements`, async () => {
         const db = await iso.openDB(getDbName(tc.testName), def)
@@ -176,6 +284,17 @@ export const testBenchmark = async tc => {
             const v = await abcTable.get(new iso.StringKey('key' + i))
             t.compare(v.v, { test: 'someVal' + i })
           }
+        })
+      })
+      await t.measureTimeAsync(`${iso.name}: Time to iterate ${n} elements`, async () => {
+        const db = await iso.openDB(getDbName(tc.testName), def)
+        await db.transact(async tr => {
+          const abcTable = tr.tables.abc
+          let retrieved = 0
+          await abcTable.iterate({}, _cursor => {
+            retrieved++
+          })
+          t.assert(retrieved === n)
         })
       })
       /**
@@ -201,6 +320,18 @@ export const testBenchmark = async tc => {
             const v = await autoTable.get(keys[i])
             t.compare(v.v, { test: 'someVal' + i })
           }
+        })
+      })
+      await t.measureTimeAsync(`${iso.name}: Time to iterate ${n} elements (autokey))`, async () => {
+        const db = await iso.openDB(getDbName(tc.testName), def)
+        await db.transact(async tr => {
+          const autoTable = tr.tables.auto
+          let retrieved = 0
+          await autoTable.iterate({}, cursor => {
+            t.compare(cursor.value.v, { test: 'someVal' + (cursor.key.id - 1) })
+            retrieved++
+          })
+          t.assert(retrieved === n)
         })
       })
     })

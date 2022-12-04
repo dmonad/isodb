@@ -37,17 +37,21 @@ const encodeValue = value => {
 
 /**
  * @param {common.IKey} key
+ * @param {boolean} increment
  * @return {Uint8Array|string|number}
  */
-const encodeKey = key => {
+const encodeKey = (key, increment) => {
   switch (key.constructor) {
     case common.AutoKey:
-      return /** @type {common.AutoKey} */ (key).id
+      return /** @type {common.AutoKey} */ (key).id + (increment ? 1 : 0)
     case common.StringKey:
-      return /** @type {common.StringKey} */ (key).id
+      return /** @type {common.StringKey} */ (key).id + (increment ? ' ' : '')
   }
   const encoder = encoding.createEncoder()
   key.encode(encoder)
+  if (increment) {
+    encoding.writeUint8(encoder, 0)
+  }
   return encoding.toUint8Array(encoder)
 }
 
@@ -90,7 +94,7 @@ class Table {
    * @return {Promise<VALUE>}
    */
   async get (key) {
-    const buf = this.t.getBinaryFast(encodeKey(key))
+    const buf = this.t.getBinaryFast(encodeKey(key, false))
     return buf ? /** @type {any} */ (this.V.decode(decoding.createDecoder(buf))) : undefined
   }
 
@@ -99,7 +103,7 @@ class Table {
    * @param {VALUE} value
    */
   set (key, value) {
-    this.t.put(encodeKey(key), encodeValue(value))
+    this.t.put(encodeKey(key, false), encodeValue(value))
   }
 
   /**
@@ -133,10 +137,10 @@ class Table {
      */
     const lrange = {}
     if (range.start) {
-      lrange.start = encodeKey(range.start)
+      lrange.start = encodeKey(range.start, range.startExclusive === true)
     }
     if (range.end) {
-      lrange.end = encodeKey(range.end)
+      lrange.end = encodeKey(range.end, range.endExclusive !== true)
     }
     if (lrange.reverse) {
       lrange.reverse = range.reverse

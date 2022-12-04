@@ -54,16 +54,18 @@ const getKeyDecoder = (keytype) => {
 /**
  * @param {common.IKey | null} start
  * @param {common.IKey | null} end
+ * @param {boolean} startExclusive
+ * @param {boolean} endExclusive
  */
-const _createIdbKeyRangeBound = (start, end) => {
+const _createIdbKeyRangeBound = (start, end, startExclusive, endExclusive) => {
   if (start && end) {
-    return idb.createIDBKeyRangeBound(encodeKey(start), encodeKey(end), false, true)
+    return idb.createIDBKeyRangeBound(encodeKey(start), encodeKey(end), startExclusive, endExclusive)
   }
   if (start) {
-    return idb.createIDBKeyRangeLowerBound(encodeKey(start), false)
+    return idb.createIDBKeyRangeLowerBound(encodeKey(start), startExclusive)
   }
   if (end) {
-    return idb.createIDBKeyRangeUpperBound(encodeKey(end), true)
+    return idb.createIDBKeyRangeUpperBound(encodeKey(end), endExclusive)
   }
   return null
 }
@@ -126,7 +128,7 @@ class Table {
     const stop = () => {
       stopped = true
     }
-    const lrange = _createIdbKeyRangeBound(range.start || null, range.end || null)
+    const lrange = _createIdbKeyRangeBound(range.start || null, range.end || null, range.startExclusive === true, range.endExclusive === true)
     await idb.iterate(this.store, lrange, (value, key) => {
       f({ stop, value: /** @type {VALUE} */ (this.V.decode(decoding.createDecoder(value))), key: /** @type {KEY} */ (this._dK(key)) })
       if (stopped) {

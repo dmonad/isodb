@@ -164,7 +164,9 @@ export class StringKey {
  *
  * @typedef {Object} RangeOption
  * @property {KEY} [RangeOption.start]
+ * @property {boolean} [RangeOption.startExclusive]
  * @property {KEY} [RangeOption.end]
+ * @property {boolean} [RangeOption.endExclusive]
  * @property {boolean} [RangeOption.reverse]
  */
 
