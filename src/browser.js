@@ -37,7 +37,56 @@ const encodeKey = key => {
 }
 
 /**
+ * @template {common.IKey} KEY
+ * @template {common.IValue} VALUE
+ */
+export class IsoTable {
+  /**
+   * @param {IDBObjectStore} store
+   * @param {typeof common.IKey} K
+   * @param {typeof common.IValue} V
+   */
+  constructor (store, K, V) {
+    this.store = store
+    this.K = K
+    this.V = V
+  }
+
+  /**
+   * @param {KEY} key
+   * @return {Promise<VALUE>}
+   */
+  async get (key) {
+    const v = /** @type {Uint8Array} */ (await idb.get(this.store, encodeKey(key)))
+    return /** @type {any} */ (this.V.decode(decoding.createDecoder(v)))
+  }
+
+  /**
+   * @param {KEY} key
+   * @param {VALUE} value
+   * @return {Promise<void>}
+   */
+  set (key, value) {
+    return idb.put(this.store, encodeValue(value), encodeKey(key))
+  }
+
+  /**
+   * Only works with AutoKey
+   *
+   * @param {VALUE} value
+   * @return {Promise<KEY>}
+   */
+  async add (value) {
+    if (this.K !== common.AutoKey) {
+      throw error.create('Expected key to be an AutoKey')
+    }
+    return idb.put(this.store, encodeValue(value)).then(k => /** @type {any} */ (new this.K(k)))
+  }
+}
+
+/**
  * @template {{[key: string]: common.ITableDef}} DEF
+ * @implements common.ITransaction<DEF>
  */
 export class Transaction {
   /**
@@ -48,58 +97,20 @@ export class Transaction {
     const dbKeys = object.keys(db.def)
     const stores = idb.transact(db.db, dbKeys, 'readwrite')
     /**
-     * @type {any}
+     * @type {{ [Tablename in keyof DEF]: common.IIsoTable<InstanceType<DEF[Tablename]["key"]>, InstanceType<DEF[Tablename]["value"]>> }}
      */
-    this.strs = {}
-    dbKeys.forEach((key, i) => { this.strs[key] = stores[i] })
-  }
-
-  /**
-   * @template {keyof DEF} TABLE
-   *
-   * @param {TABLE} table
-   * @param {InstanceType<DEF[TABLE]["key"]>} key
-   * @return {Promise<InstanceType<DEF[TABLE]["value"]>>}
-   */
-  async get (table, key) {
-    const V = this.db.def[table].value
-    const st = this.strs[table]
-    const v = /** @type {Uint8Array} */ (await idb.get(st, encodeKey(key)))
-    return /** @type {any} */ (V.decode(decoding.createDecoder(v)))
-  }
-
-  /**
-   * @template {keyof DEF} TABLE
-   *
-   * @param {TABLE} table
-   * @param {InstanceType<DEF[TABLE]["key"]>} key
-   * @param {InstanceType<DEF[TABLE]["value"]>} value
-   * @return {Promise<void>|void}
-   */
-  set (table, key, value) {
-    return idb.put(this.strs[table], encodeValue(value), encodeKey(key))
-  }
-
-  /**
-   * Only works with AutoKey
-   *
-   * @template {keyof DEF} TABLE
-   *
-   * @param {TABLE} table
-   * @param {InstanceType<DEF[TABLE]["value"]>} value
-   * @return {Promise<InstanceType<DEF[TABLE]["key"]>>}
-   */
-  async add (table, value) {
-    const KeyType = /** @type {any} */ (this.db.def[table].key)
-    if (KeyType !== common.AutoKey) {
-      throw error.create('Expected key to be an AutoKey')
-    }
-    return idb.put(this.strs[table], encodeValue(value)).then(k => new KeyType(k))
+    this.tables = /** @type {any} */ ({})
+    const tables = /** @type {any} */ (this.tables)
+    dbKeys.forEach((key, i) => {
+      const d = db.def[key]
+      tables[key] = new IsoTable(stores[i], d.key, d.value)
+    })
   }
 }
 
 /**
  * @template {common.IDbDef} DEF
+ * @implements common.IIsoDB<DEF>
  */
 export class IsoDB {
   /**
@@ -112,20 +123,28 @@ export class IsoDB {
   }
 
   /**
-   * @param {function(Transaction<DEF>): Promise<void>} f
+   * @template T
+   * @param {function(common.ITransaction<DEF>): Promise<T>} f
+   * @return {Promise<T>}
    */
   transact (f) {
     /**
-     * @type {Transaction<DEF>}
+     * @type {common.ITransaction<DEF>}
      */
     const tr = new Transaction(this)
     return f(tr)
   }
+
+  destroy () {
+  }
 }
 
 /**
+ * @template {common.IDbDef} DEF
+ *
  * @param {string} name
- * @param {common.IDbDef} def
+ * @param {DEF} def
+ * @return {Promise<common.IIsoDB<DEF>>}
  */
 export const openDB = (name, def) =>
   idb.openDB(name, db => {

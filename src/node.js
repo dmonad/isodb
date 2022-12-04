@@ -62,7 +62,60 @@ const encodeKey = key => {
 }
 
 /**
+ * @template {common.IKey} KEY
+ * @template {common.IValue} VALUE
+ * @implements common.IIsoTable<KEY, VALUE>
+ */
+export class IsoTable {
+  /**
+   * @param {lmdb.Database} t
+   * @param {any} keytype
+   * @param {any} valuetype
+   */
+  constructor (t, keytype, valuetype) {
+    this.t = t
+    this.K = keytype
+    this.V = valuetype
+  }
+
+  /**
+   * @param {KEY} key
+   * @return {Promise<VALUE>}
+   */
+  async get (key) {
+    const buf = this.t.getBinaryFast(encodeKey(key))
+    return buf ? /** @type {any} */ (this.V.decode(decoding.createDecoder(buf))) : undefined
+  }
+
+  /**
+   * @param {KEY} key
+   * @param {VALUE} value
+   * @return {Promise<void>}
+   */
+  async set (key, value) {
+    await this.t.put(encodeKey(key), encodeValue(value))
+  }
+
+  /**
+   * Only works with AutoKey
+   *
+   * @param {VALUE} value
+   * @return {Promise<KEY>}
+   */
+  async add (value) {
+    if (/** @type {any} */ (this.K) !== common.AutoKey) {
+      throw error.create('Expected key to be an AutoKey')
+    }
+    const [lastKey] = this.t.getKeys({ reverse: true, limit: 1 }).asArray
+    const key = lastKey == null ? 0 : /** @type {number} */ (lastKey) + 1
+    await this.t.put(key, encodeValue(value))
+    return /** @type {any} */ (new common.AutoKey(key))
+  }
+}
+
+/**
  * @template {{[key: string]: common.ITableDef}} DEF
+ * @implements common.ITransaction<DEF>
  */
 export class Transaction {
   /**
@@ -70,59 +123,13 @@ export class Transaction {
    */
   constructor (db) {
     this.db = db
-  }
-
-  /**
-   * @template {keyof DEF} TABLE
-   *
-   * @param {TABLE} tablename
-   * @param {InstanceType<DEF[TABLE]["key"]>} key
-   * @return {Promise<InstanceType<DEF[TABLE]["value"]>>}
-   */
-  async get (tablename, key) {
-    const V = this.db.def[tablename].value
-    const table = this.db.tables[/** @type {string} */ (tablename)]
-    const buf = table.getBinaryFast(encodeKey(key))
-    return buf ? /** @type {any} */ (V.decode(decoding.createDecoder(buf))) : undefined
-  }
-
-  /**
-   * @template {keyof DEF} TABLE
-   *
-   * @param {TABLE} tablename
-   * @param {InstanceType<DEF[TABLE]["key"]>} key
-   * @param {InstanceType<DEF[TABLE]["value"]>} value
-   * @return {Promise<void>}
-   */
-  async set (tablename, key, value) {
-    const table = this.db.tables[/** @type {string} */ (tablename)]
-    await table.put(encodeKey(key), encodeValue(value))
-  }
-
-  /**
-   * Only works with AutoKey
-   *
-   * @template {keyof DEF} TABLE
-   *
-   * @param {TABLE} tablename
-   * @param {InstanceType<DEF[TABLE]["value"]>} value
-   * @return {Promise<InstanceType<DEF[TABLE]["key"]>>}
-   */
-  async add (tablename, value) {
-    const KeyType = /** @type {any} */ (this.db.def[tablename].key)
-    if (KeyType !== common.AutoKey) {
-      throw error.create('Expected key to be an AutoKey')
-    }
-    const table = this.db.tables[/** @type {string} */ (tablename)]
-    const [lastKey] = table.getKeys({ reverse: true, limit: 1 }).asArray
-    const key = lastKey == null ? 0 : /** @type {number} */ (lastKey) + 1
-    await table.put(key, encodeValue(value))
-    return /** @type {any} */ (new common.AutoKey(key))
+    this.tables = db.tables
   }
 }
 
 /**
  * @template {common.IDbDef} DEF
+ * @implements common.IIsoDB<DEF>
  */
 export class IsoDB {
   /**
@@ -133,9 +140,9 @@ export class IsoDB {
     this.def = def
     this.env = env
     /**
-     * @type {{[key: string]: lmdb.Database}}
+     * @type {{ [Tablename in keyof DEF]: IsoTable<InstanceType<DEF[Tablename]["key"]>, InstanceType<DEF[Tablename]["value"]>> }}
      */
-    this.tables = {}
+    this.tables = /** @type {any} */ ({})
     for (const dbname in def) {
       const d = def[dbname]
       /**
@@ -146,12 +153,14 @@ export class IsoDB {
         encoding: 'binary',
         keyEncoding: getLmdbKeyType(d.key)
       }
-      this.tables[dbname] = env.openDB(conf)
+      this.tables[dbname] = new IsoTable(env.openDB(conf), /** @type {any} */ (d.key), /** @type {any} */ (d.value))
     }
   }
 
   /**
-   * @param {function(Transaction<DEF>): Promise<void>} f
+   * @template T
+   * @param {function(common.ITransaction<DEF>): Promise<T>} f
+   * @return {Promise<T>}
    */
   async transact (f) {
     return this.env.transaction(() => {
@@ -164,16 +173,16 @@ export class IsoDB {
   }
 
   destroy () {
-    for (const key in this.tables) {
-      this.tables[key].close()
-    }
     this.env.close()
   }
 }
 
 /**
+ * @template {common.IDbDef} DEF
+ *
  * @param {string} location
- * @param {common.IDbDef} def
+ * @param {DEF} def
+ * @return {Promise<common.IIsoDB<DEF>>}
  */
 export const openDB = async (location, def) => {
   await fs.mkdir(path.dirname(location), { recursive: true })

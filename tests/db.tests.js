@@ -1,39 +1,24 @@
 
 import * as t from 'lib0/testing'
 import * as logging from 'lib0/logging'
+import * as isoLmdb from '../src/node.js'
 
 /**
- * @type {Array<import('../src/browser.js') | import('../src/node.js')>}
+ * @type {Array<import('../src/node.js') | import('../src/browser.js')>}
  */
 const isoImpls = []
 
 /**
- * @param {Array<import('../src/browser.js') | import('../src/node.js')>} iso
+ * @param {import('../src/node.js') | import('../src/browser.js')} iso
  */
 export const addIsoImpls = iso => {
   isoImpls.push(iso)
 }
 
-const getDbName = testname => '.test_dbs/' + testname
-
 /**
- * @param {t.TestCase} tc
+ * @param {string} testname
  */
-export const testAsyncs = async tc => {
-  const async1 = async () => {
-    let res = await 'x1'
-    console.log(res)
-    res = await 'x2'
-    console.log(res)
-  }
-  const async2 = async () => {
-    let res = await 'y1'
-    console.log(res)
-    res = await 'y2'
-    console.log(res)
-  }
-  await Promise.all([async1(), async2()])
-}
+const getDbName = testname => '.test_dbs/' + testname
 
 /**
  * @param {t.TestCase} tc
@@ -42,38 +27,42 @@ export const testTransactionsAreExecutedOneAfterAnother = async tc => {
   for (const iso of isoImpls) {
     await t.groupAsync(iso.name, async () => {
       await iso.deleteDB(getDbName(tc.testName))
-      const def = { abc: { key: iso.StringKey, value: iso.AnyValue }, xyz: { key: iso.AutoKey, value: iso.AnyValue } }
+      const def = { abc: { key: isoLmdb.StringKey, value: isoLmdb.AnyValue }, xyz: { key: isoLmdb.AutoKey, value: isoLmdb.AnyValue } }
       /**
-       * @type {import("../src/browser.js").IsoDB<typeof def>}
+       * @type {isoLmdb.IIsoDB<def>}
        */
-      const db = await iso.openDB(getDbName(tc.testName), def)
+      const db = await isoLmdb.openDB(getDbName(tc.testName), def)
       /**
        * @type {Array<string>}
        */
       const logs = []
       const t1 = db.transact(async tr => {
         const testValue = new iso.AnyValue({ test: 'someVal' })
-        await tr.set('xyz', new iso.StringKey('test'), testValue)
+        const abcTable = tr.tables.abc
+        const xyzTable = tr.tables.xyz
+        await abcTable.set(new iso.StringKey('test'), testValue)
         logs.push('x1')
-        const vv = await tr.get('abc', new iso.StringKey('test'))
+        const vv = await abcTable.get(new iso.StringKey('test'))
         logs.push('x2')
         t.compare(vv.v, testValue.v)
-        const key = await tr.add('xyz', new iso.AnyValue({ test: 'someVal' }))
+        const key = await xyzTable.add(new iso.AnyValue({ test: 'someVal' }))
         logs.push('x3')
-        const v = await tr.get('xyz', key)
+        const v = await xyzTable.get(key)
         logs.push('x4')
         t.compare(v.v, { test: 'someVal' }, 'checked someval')
       })
       const t2 = db.transact(async tr => {
         const testValue = new iso.AnyValue({ test: 'someVal' })
-        await tr.set('abc', new iso.StringKey('test'), testValue)
+        const abcTable = tr.tables.abc
+        const xyzTable = tr.tables.xyz
+        await abcTable.set(new iso.StringKey('test'), testValue)
         logs.push('y1')
-        const vv = await tr.get('abc', new iso.StringKey('test'))
+        const vv = await abcTable.get(new iso.StringKey('test'))
         logs.push('y2')
         t.compare(vv.v, testValue.v)
-        const key = await tr.add('xyz', new iso.AnyValue({ test: 'someVal' }))
+        const key = await xyzTable.add(new iso.AnyValue({ test: 'someVal' }))
         logs.push('y3')
-        const v = await tr.get('xyz', key)
+        const v = await xyzTable.get(key)
         logs.push('y4')
         t.compare(v.v, { test: 'someVal' }, 'checked someval')
       })
@@ -92,17 +81,16 @@ export const testSomething = async tc => {
     await t.groupAsync(iso.name, async () => {
       await iso.deleteDB(getDbName(tc.testName))
       const def = { abc: { key: iso.StringKey, value: iso.AnyValue }, xyz: { key: iso.AutoKey, value: iso.AnyValue } }
-      /**
-       * @type {iso.IsoDB<typeof def>}
-       */
       const db = await iso.openDB(getDbName(tc.testName), def)
       await db.transact(async tr => {
         const testValue = new iso.AnyValue({ test: 'someVal' })
-        await tr.set('abc', new iso.StringKey('test'), testValue)
-        const vv = await tr.get('abc', new iso.StringKey('test'))
+        const abcTable = tr.tables.abc
+        const xyzTable = tr.tables.xyz
+        await abcTable.set(new iso.StringKey('test'), testValue)
+        const vv = await abcTable.get(new iso.StringKey('test'))
         t.compare(vv.v, testValue.v)
-        const key = await tr.add('xyz', new iso.AnyValue({ test: 'someVal' }))
-        const v = await tr.get('xyz', key)
+        const key = await xyzTable.add(new iso.AnyValue({ test: 'someVal' }))
+        const v = await xyzTable.get(key)
         t.compare(v.v, { test: 'someVal' }, 'checked someval')
       })
     })
@@ -120,52 +108,50 @@ export const testBenchmark = async tc => {
       const def = { abc: { key: iso.StringKey, value: iso.AnyValue }, auto: { key: iso.AutoKey, value: iso.AnyValue } }
       await t.measureTimeAsync(`${iso.name}: Time to insert ${n} elements`, async () => {
         /**
-         * @type {iso.IsoDB<typeof def>}
+         * @type {isoLmdb.IIsoDB<typeof def>}
          */
         const db = await iso.openDB(getDbName(tc.testName), def)
         await db.transact(async tr => {
+          const abcTable = tr.tables.abc
           for (let i = 0; i < n; i++) {
             const testValue = new iso.AnyValue({ test: 'someVal' + i })
-            await tr.set('abc', new iso.StringKey('key' + i), testValue)
+            await abcTable.set(new iso.StringKey('key' + i), testValue)
           }
         })
       })
       await t.measureTimeAsync(`${iso.name}: Time to retrieve ${n} elements`, async () => {
-        /**
-         * @type {iso.IsoDB<typeof def>}
-         */
         const db = await iso.openDB(getDbName(tc.testName), def)
         await db.transact(async tr => {
+          const abcTable = tr.tables.abc
           for (let i = 0; i < n; i++) {
-            const v = await tr.get('abc', new iso.StringKey('key' + i))
-            t.assert(v.v.test === 'someVal' + i)
+            const v = await abcTable.get(new iso.StringKey('key' + i))
+            t.compare(v.v, { test: 'someVal' + i })
           }
         })
       })
 
+      /**
+       * @type {Array<isoLmdb.AutoKey>}
+       */
       const keys = []
       await t.measureTimeAsync(`${iso.name}: Time to insert ${n} elements (autokey))`, async () => {
-        /**
-         * @type {iso.IsoDB<typeof def>}
-         */
         const db = await iso.openDB(getDbName(tc.testName), def)
         await db.transact(async tr => {
+          const autoTable = tr.tables.auto
           for (let i = 0; i < n; i++) {
             const testValue = new iso.AnyValue({ test: 'someVal' + i })
-            const key = await tr.add('auto', testValue)
+            const key = await autoTable.add(testValue)
             keys.push(key)
           }
         })
       })
       await t.measureTimeAsync(`${iso.name}: Time to retrieve ${n} elements (autokey))`, async () => {
-        /**
-         * @type {iso.IsoDB<typeof def>}
-         */
         const db = await iso.openDB(getDbName(tc.testName), def)
         await db.transact(async tr => {
+          const autoTable = tr.tables.auto
           for (let i = 0; i < keys.length; i++) {
-            const v = await tr.get('auto', keys[i])
-            t.assert(v.v.test === 'someVal' + i)
+            const v = await autoTable.get(keys[i])
+            t.compare(v.v, { test: 'someVal' + i })
           }
         })
       })
