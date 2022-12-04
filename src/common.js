@@ -197,6 +197,30 @@ export class ITable {
   }
 
   /**
+   * @param {RangeOption<KEY>} _range
+   * @return {Promise<Array<{ key: KEY, value: VALUE }>>}
+   */
+  getEntries (_range) {
+    error.methodUnimplemented()
+  }
+
+  /**
+   * @param {RangeOption<KEY>} _range
+   * @return {Promise<Array<VALUE>>}
+   */
+  getValues (_range) {
+    error.methodUnimplemented()
+  }
+
+  /**
+   * @param {RangeOption<KEY>} _range
+   * @return {Promise<Array<KEY>>}
+   */
+  getKeys (_range) {
+    error.methodUnimplemented()
+  }
+
+  /**
    * @param {KEY} _key
    * @param {VALUE} _value
    */

@@ -27,6 +27,27 @@ const getLmdbKeyType = keytype => {
 }
 
 /**
+ * @template {common.IKey} KEY
+ * @param {common.RangeOption<KEY>} range
+ */
+const toNativeRange = range => {
+  /**
+   * @type {any}
+   */
+  const lrange = {}
+  if (range.start) {
+    lrange.start = encodeKey(range.start, range.startExclusive === true)
+  }
+  if (range.end) {
+    lrange.end = encodeKey(range.end, range.endExclusive !== true)
+  }
+  if (lrange.reverse) {
+    lrange.reverse = range.reverse
+  }
+  return lrange
+}
+
+/**
  * @param {common.IValue} value
  */
 const encodeValue = value => {
@@ -99,6 +120,39 @@ class Table {
   }
 
   /**
+   * @todo rename entries
+   * @param {common.RangeOption<KEY>} range
+   * @return {Promise<Array<{ key: KEY, value: VALUE }>>}
+   */
+  getEntries (range) {
+    return Promise.resolve(this.t.getRange(toNativeRange(range)).map(entry => ({
+      key: /** @type {KEY} */ (this._dK(entry.key)), value: /** @type {VALUE} */ (this.V.decode(decoding.createDecoder(entry.value)))
+    })).asArray)
+  }
+
+  /**
+   * @todo rename entries
+   * @param {common.RangeOption<KEY>} range
+   * @return {Promise<Array<KEY>>}
+   */
+  getKeys (range) {
+    return Promise.resolve(this.t.getRange(toNativeRange(range)).map(entry =>
+      /** @type {KEY} */ (this._dK(entry.key))
+    ).asArray)
+  }
+
+  /**
+   * @todo rename entries
+   * @param {common.RangeOption<KEY>} range
+   * @return {Promise<Array<VALUE>>}
+   */
+  getValues (range) {
+    return Promise.resolve(this.t.getRange(toNativeRange(range)).map(entry =>
+      /** @type {VALUE} */ (this.V.decode(decoding.createDecoder(entry.value)))
+    ).asArray)
+  }
+
+  /**
    * @param {KEY} key
    * @param {VALUE} value
    */
@@ -132,20 +186,7 @@ class Table {
     const stop = () => {
       stopped = true
     }
-    /**
-     * @type {any}
-     */
-    const lrange = {}
-    if (range.start) {
-      lrange.start = encodeKey(range.start, range.startExclusive === true)
-    }
-    if (range.end) {
-      lrange.end = encodeKey(range.end, range.endExclusive !== true)
-    }
-    if (lrange.reverse) {
-      lrange.reverse = range.reverse
-    }
-    for (const { key, value } of this.t.getRange(lrange)) {
+    for (const { key, value } of this.t.getRange(toNativeRange(range))) {
       f({ stop, key: /** @type {KEY} */ (this._dK(key)), value: /** @type {VALUE} */ (this.V.decode(decoding.createDecoder(value))) })
       if (stopped) {
         break

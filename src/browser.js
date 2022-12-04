@@ -52,20 +52,20 @@ const getKeyDecoder = (keytype) => {
 }
 
 /**
- * @param {common.IKey | null} start
- * @param {common.IKey | null} end
- * @param {boolean} startExclusive
- * @param {boolean} endExclusive
+ * @template {common.IKey} KEY
+ * @param {common.RangeOption<KEY>} range
  */
-const _createIdbKeyRangeBound = (start, end, startExclusive, endExclusive) => {
-  if (start && end) {
-    return idb.createIDBKeyRangeBound(encodeKey(start), encodeKey(end), startExclusive, endExclusive)
+const toNativeRange = (range) => {
+  const startExclusive = range.startExclusive === true
+  const endExclusive = range.endExclusive === true
+  if (range.start && range.end) {
+    return idb.createIDBKeyRangeBound(encodeKey(range.start), encodeKey(range.end), startExclusive, endExclusive)
   }
-  if (start) {
-    return idb.createIDBKeyRangeLowerBound(encodeKey(start), startExclusive)
+  if (range.start) {
+    return idb.createIDBKeyRangeLowerBound(encodeKey(range.start), startExclusive)
   }
-  if (end) {
-    return idb.createIDBKeyRangeUpperBound(encodeKey(end), endExclusive)
+  if (range.end) {
+    return idb.createIDBKeyRangeUpperBound(encodeKey(range.end), endExclusive)
   }
   return null
 }
@@ -128,13 +128,46 @@ class Table {
     const stop = () => {
       stopped = true
     }
-    const lrange = _createIdbKeyRangeBound(range.start || null, range.end || null, range.startExclusive === true, range.endExclusive === true)
+    const lrange = toNativeRange(range)
     await idb.iterate(this.store, lrange, (value, key) => {
       f({ stop, value: /** @type {VALUE} */ (this.V.decode(decoding.createDecoder(value))), key: /** @type {KEY} */ (this._dK(key)) })
       if (stopped) {
         return false
       }
     }, range.reverse ? 'prev' : 'next')
+  }
+
+  /**
+   * @param {common.RangeOption<KEY>} range
+   * @return {Promise<Array<{ key: KEY, value: VALUE }>>}
+   */
+  async getEntries (range) {
+    const entries = await idb.getAllKeysValues(this.store, toNativeRange(range) || undefined)
+    return entries.map(entry => ({
+      value: /** @type {VALUE} */ (this.V.decode(decoding.createDecoder(entry.v))), key: /** @type {KEY} */ (this._dK(entry.k))
+    }))
+  }
+
+  /**
+   * @param {common.RangeOption<KEY>} range
+   * @return {Promise<Array<VALUE>>}
+   */
+  async getValues (range) {
+    const values = await idb.getAll(this.store, toNativeRange(range) || undefined)
+    return values.map(value =>
+      /** @type {VALUE} */ (this.V.decode(decoding.createDecoder(value)))
+    )
+  }
+
+  /**
+   * @param {common.RangeOption<KEY>} range
+   * @return {Promise<Array<KEY>>}
+   */
+  async getKeys (range) {
+    const keys = await idb.getAllKeys(this.store, toNativeRange(range) || undefined)
+    return keys.map(key =>
+      /** @type {KEY} */ (this._dK(key))
+    )
   }
 }
 

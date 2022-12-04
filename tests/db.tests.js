@@ -297,6 +297,27 @@ export const testBenchmark = async tc => {
           t.assert(retrieved === n)
         })
       })
+      await t.measureTimeAsync(`${iso.name}: Time to get ${n} entries`, async () => {
+        const db = await iso.openDB(getDbName(tc.testName), def)
+        await db.transact(async tr => {
+          const entries = await tr.tables.abc.getEntries({})
+          t.assert(entries.length === n)
+        })
+      })
+      await t.measureTimeAsync(`${iso.name}: Time to get ${n} keys`, async () => {
+        const db = await iso.openDB(getDbName(tc.testName), def)
+        await db.transact(async tr => {
+          const keys = await tr.tables.abc.getKeys({})
+          t.assert(keys.length === n)
+        })
+      })
+      await t.measureTimeAsync(`${iso.name}: Time to get ${n} values`, async () => {
+        const db = await iso.openDB(getDbName(tc.testName), def)
+        await db.transact(async tr => {
+          const values = await tr.tables.abc.getValues({})
+          t.assert(values.length === n)
+        })
+      })
       /**
        * @type {Array<import('../src/common.js').AutoKey>}
        */
@@ -332,6 +353,27 @@ export const testBenchmark = async tc => {
             retrieved++
           })
           t.assert(retrieved === n)
+        })
+      })
+      await t.measureTimeAsync(`${iso.name}: Time to get ${n} entries (autokey))`, async () => {
+        const db = await iso.openDB(getDbName(tc.testName), def)
+        await db.transact(async tr => {
+          const entries = await tr.tables.auto.getEntries({})
+          t.assert(entries.length === n)
+        })
+      })
+      await t.measureTimeAsync(`${iso.name}: Time to get ${n} keys (autokey))`, async () => {
+        const db = await iso.openDB(getDbName(tc.testName), def)
+        await db.transact(async tr => {
+          const keys = await tr.tables.auto.getKeys({})
+          t.assert(keys.length === n)
+        })
+      })
+      await t.measureTimeAsync(`${iso.name}: Time to get ${n} values (autokey))`, async () => {
+        const db = await iso.openDB(getDbName(tc.testName), def)
+        await db.transact(async tr => {
+          const values = await tr.tables.auto.getValues({})
+          t.assert(values.length === n)
         })
       })
     })
