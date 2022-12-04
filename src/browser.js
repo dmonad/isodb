@@ -37,6 +37,38 @@ const encodeKey = key => {
 }
 
 /**
+ * @param {typeof common.IKey} keytype
+ * @return {function(any):common.IKey | null}
+ */
+const getKeyDecoder = (keytype) => {
+  switch (keytype) {
+    case common.AutoKey:
+      return id => id ? new common.AutoKey(id) : null
+    case common.StringKey:
+      return id => id ? new common.StringKey(id) : null
+    default:
+      return id => id ? keytype.decode(decoding.createDecoder(id)) : null
+  }
+}
+
+/**
+ * @param {common.IKey | null} start
+ * @param {common.IKey | null} end
+ */
+const _createIdbKeyRangeBound = (start, end) => {
+  if (start && end) {
+    return idb.createIDBKeyRangeBound(encodeKey(start), encodeKey(end), false, true)
+  }
+  if (start) {
+    return idb.createIDBKeyRangeLowerBound(encodeKey(start), false)
+  }
+  if (end) {
+    return idb.createIDBKeyRangeUpperBound(encodeKey(end), true)
+  }
+  return null
+}
+
+/**
  * @template {common.IKey} KEY
  * @template {common.IValue} VALUE
  */
@@ -50,6 +82,8 @@ class Table {
     this.store = store
     this.K = K
     this.V = V
+    // decode key
+    this._dK = getKeyDecoder(K)
   }
 
   /**
@@ -80,6 +114,25 @@ class Table {
       throw error.create('Expected key to be an AutoKey')
     }
     return idb.put(this.store, encodeValue(value)).then(k => /** @type {any} */ (new this.K(k)))
+  }
+
+  /**
+   * @param {common.RangeOption<KEY>} range
+   * @param {function(common.ICursor<KEY,VALUE>):void} f
+   * @return {Promise<void>}
+   */
+  async iterate (range, f) {
+    let stopped = false
+    const stop = () => {
+      stopped = true
+    }
+    const lrange = _createIdbKeyRangeBound(range.start || null, range.end || null)
+    await idb.iterate(this.store, lrange, (value, key) => {
+      f({ stop, value: /** @type {VALUE} */ (this.V.decode(decoding.createDecoder(value))), key: /** @type {KEY} */ (this._dK(key)) })
+      if (stopped) {
+        return false
+      }
+    }, range.reverse ? 'prev' : 'next')
   }
 }
 
@@ -114,7 +167,7 @@ class Transaction {
 class DB {
   /**
    * @param {IDBDatabase} db
-*  * @param {DEF} def
+   * @param {DEF} def
    */
   constructor (db, def) {
     this.db = db

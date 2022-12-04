@@ -1,6 +1,4 @@
-
 import * as t from 'lib0/testing'
-import * as logging from 'lib0/logging'
 
 /**
  * @type {Array<import('../src/node.js') | import('../src/browser.js')>}
@@ -18,6 +16,66 @@ export const addIsoImpls = iso => {
  * @param {string} testname
  */
 const getDbName = testname => '.test_dbs/' + testname
+
+/**
+ * @param {t.TestCase} tc
+ */
+export const testIterator = async tc => {
+  for (const iso of isoImpls) {
+    await t.groupAsync(iso.name, async () => {
+      await iso.deleteDB(getDbName(tc.testName))
+      const def = { abc: { key: iso.StringKey, value: iso.AnyValue }, auto: { key: iso.AutoKey, value: iso.AnyValue } }
+      const db = await iso.openDB(getDbName(tc.testName), def)
+      db.transact(tr => {
+        for (let i = 1; i < 30; i++) {
+          tr.tables.auto.add(new iso.AnyValue({ i }))
+        }
+      })
+      await db.transact(async tr => {
+        /**
+         * @type {Array<number>}
+         */
+        const read = []
+        await tr.tables.auto.iterate({}, (cursor) => {
+          const k = cursor.key
+          const v = cursor.value
+          t.compare({ i: k.id }, v.v)
+          read.push(k.id)
+          if (k.id === 27) {
+            cursor.stop()
+          }
+        })
+        t.assert(read.length === 27 && read.every((v, index) => v === index + 1))
+      })
+      await db.transact(async tr => {
+        /**
+         * @type {Array<number>}
+         */
+        const read = []
+        await tr.tables.auto.iterate({ start: new iso.AutoKey(2) }, (cursor) => {
+          const k = cursor.key
+          const v = cursor.value
+          t.compare({ i: k.id }, v.v)
+          read.push(k.id)
+        })
+        t.assert(read.length === 28 && read.every((v, index) => v === index + 2))
+      })
+      await db.transact(async tr => {
+        /**
+         * @type {Array<number>}
+         */
+        const read = []
+        await tr.tables.auto.iterate({ start: new iso.AutoKey(2), end: new iso.AutoKey(3) }, (cursor) => {
+          const k = cursor.key
+          const v = cursor.value
+          t.compare({ i: k.id }, v.v)
+          read.push(k.id)
+        })
+        t.assert(read.length === 1 && read.every((v, index) => v === index + 2))
+      })
+    })
+  }
+}
 
 /**
  * @param {t.TestCase} tc
@@ -120,7 +178,6 @@ export const testBenchmark = async tc => {
           }
         })
       })
-
       /**
        * @type {Array<import('../src/common.js').AutoKey>}
        */

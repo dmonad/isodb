@@ -161,6 +161,26 @@ export class StringKey {
 
 /**
  * @template {IKey} KEY
+ *
+ * @typedef {Object} RangeOption
+ * @property {KEY} [RangeOption.start]
+ * @property {KEY} [RangeOption.end]
+ * @property {boolean} [RangeOption.reverse]
+ */
+
+/**
+ * @template {IKey} KEY
+ * @template {IValue} VALUE
+ *
+ * @interface
+ * @typedef {Object} ICursor
+ * @property {KEY} RangeOption.key
+ * @property {VALUE} RangeOption.value
+ * @property {function():void} stop
+ */
+
+/**
+ * @template {IKey} KEY
  * @template {IValue} VALUE
  *
  * @interface
@@ -170,7 +190,7 @@ export class ITable {
    * @param {KEY} _key
    * @return {Promise<VALUE>}
    */
-  async get (_key) {
+  get (_key) {
     error.methodUnimplemented()
   }
 
@@ -188,7 +208,16 @@ export class ITable {
    * @param {VALUE} _value
    * @return {Promise<KEY>}
    */
-  async add (_value) {
+  add (_value) {
+    error.methodUnimplemented()
+  }
+
+  /**
+   * @param {RangeOption<KEY>} _range
+   * @param {function(ICursor<KEY,VALUE>):void} _f
+   * @return {Promise<void>}
+   */
+  iterate (_range, _f) {
     error.methodUnimplemented()
   }
 }
@@ -219,7 +248,7 @@ export class ITransaction {
 export class IDB {
   /**
    * @template T
-   * @param {function(ITransaction<DEF>): Promise<T>} _f
+   * @param {function(ITransaction<DEF>): Promise<T>|T} _f
    * @return {Promise<T>}
    */
   async transact (_f) {

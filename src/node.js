@@ -1,6 +1,7 @@
 import * as common from './common.js'
 import * as encoding from 'lib0/encoding'
 import * as decoding from 'lib0/decoding'
+import * as promise from 'lib0/promise'
 import * as error from 'lib0/error'
 import lmdb from 'lmdb'
 import fs from 'node:fs/promises'
@@ -51,6 +52,21 @@ const encodeKey = key => {
 }
 
 /**
+ * @param {typeof common.IKey} keytype
+ * @return {function(any):common.IKey | null}
+ */
+const getKeyDecoder = (keytype) => {
+  switch (keytype) {
+    case common.AutoKey:
+      return id => id == null ? null : new common.AutoKey(id)
+    case common.StringKey:
+      return id => id == null ? null : new common.StringKey(id)
+    default:
+      return id => id == null ? null : keytype.decode(decoding.createDecoder(id))
+  }
+}
+
+/**
  * @template {common.IKey} KEY
  * @template {common.IValue} VALUE
  * @implements common.ITable<KEY, VALUE>
@@ -65,6 +81,8 @@ class Table {
     this.t = t
     this.K = keytype
     this.V = valuetype
+    // decode key
+    this._dK = getKeyDecoder(keytype)
   }
 
   /**
@@ -95,9 +113,41 @@ class Table {
       throw error.create('Expected key to be an AutoKey')
     }
     const [lastKey] = this.t.getKeys({ reverse: true, limit: 1 }).asArray
-    const key = lastKey == null ? 0 : /** @type {number} */ (lastKey) + 1
+    const key = lastKey == null ? 1 : /** @type {number} */ (lastKey) + 1
     await this.t.put(key, encodeValue(value))
     return /** @type {any} */ (new common.AutoKey(key))
+  }
+
+  /**
+   * @param {common.RangeOption<KEY>} range
+   * @param {function(common.ICursor<KEY,VALUE>):void} f
+   * @return {Promise<void>}
+   */
+  iterate (range, f) {
+    let stopped = false
+    const stop = () => {
+      stopped = true
+    }
+    /**
+     * @type {any}
+     */
+    const lrange = {}
+    if (range.start) {
+      lrange.start = encodeKey(range.start)
+    }
+    if (range.end) {
+      lrange.end = encodeKey(range.end)
+    }
+    if (lrange.reverse) {
+      lrange.reverse = range.reverse
+    }
+    for (const { key, value } of this.t.getRange(lrange)) {
+      f({ stop, key: /** @type {KEY} */ (this._dK(key)), value: /** @type {VALUE} */ (this.V.decode(decoding.createDecoder(value))) })
+      if (stopped) {
+        break
+      }
+    }
+    return promise.resolve()
   }
 }
 
