@@ -36,7 +36,7 @@ export const testTransactionsAreExecutedOneAfterAnother = async tc => {
         const testValue = new iso.AnyValue({ test: 'someVal' })
         const abcTable = tr.tables.abc
         const xyzTable = tr.tables.xyz
-        await abcTable.set(new iso.StringKey('test'), testValue)
+        abcTable.set(new iso.StringKey('test'), testValue)
         logs.push('x1')
         const vv = await abcTable.get(new iso.StringKey('test'))
         logs.push('x2')
@@ -51,8 +51,7 @@ export const testTransactionsAreExecutedOneAfterAnother = async tc => {
         const testValue = new iso.AnyValue({ test: 'someVal' })
         const abcTable = tr.tables.abc
         const xyzTable = tr.tables.xyz
-        await abcTable.set(new iso.StringKey('test'), testValue)
-        logs.push('y1')
+        abcTable.set(new iso.StringKey('test'), testValue)
         const vv = await abcTable.get(new iso.StringKey('test'))
         logs.push('y2')
         t.compare(vv.v, testValue.v)
@@ -63,8 +62,7 @@ export const testTransactionsAreExecutedOneAfterAnother = async tc => {
         t.compare(v.v, { test: 'someVal' }, 'checked someval')
       })
       await Promise.all([t1, t2])
-      logging.print(logs)
-      t.compareArrays(logs, ['x1', 'x2', 'x3', 'x4', 'y1', 'y2', 'y3', 'y4'])
+      t.compareArrays(logs, ['x1', 'x2', 'x3', 'x4', 'y2', 'y3', 'y4'])
     })
   }
 }
@@ -82,7 +80,7 @@ export const testSomething = async tc => {
         const testValue = new iso.AnyValue({ test: 'someVal' })
         const abcTable = tr.tables.abc
         const xyzTable = tr.tables.xyz
-        await abcTable.set(new iso.StringKey('test'), testValue)
+        abcTable.set(new iso.StringKey('test'), testValue)
         const vv = await abcTable.get(new iso.StringKey('test'))
         t.compare(vv.v, testValue.v)
         const key = await xyzTable.add(new iso.AnyValue({ test: 'someVal' }))
@@ -108,7 +106,7 @@ export const testBenchmark = async tc => {
           const abcTable = tr.tables.abc
           for (let i = 0; i < n; i++) {
             const testValue = new iso.AnyValue({ test: 'someVal' + i })
-            await abcTable.set(new iso.StringKey('key' + i), testValue)
+            abcTable.set(new iso.StringKey('key' + i), testValue)
           }
         })
       })

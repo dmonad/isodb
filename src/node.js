@@ -58,8 +58,8 @@ const encodeKey = key => {
 class Table {
   /**
    * @param {lmdb.Database} t
-   * @param {any} keytype
-   * @param {any} valuetype
+   * @param {typeof common.IKey} keytype
+   * @param {typeof common.IValue} valuetype
    */
   constructor (t, keytype, valuetype) {
     this.t = t
@@ -79,10 +79,9 @@ class Table {
   /**
    * @param {KEY} key
    * @param {VALUE} value
-   * @return {Promise<void>}
    */
-  async set (key, value) {
-    await this.t.put(encodeKey(key), encodeValue(value))
+  set (key, value) {
+    this.t.put(encodeKey(key), encodeValue(value))
   }
 
   /**
@@ -142,7 +141,7 @@ class DB {
         encoding: 'binary',
         keyEncoding: getLmdbKeyType(d.key)
       }
-      this.tables[dbname] = new Table(env.openDB(conf), /** @type {any} */ (d.key), /** @type {any} */ (d.value))
+      this.tables[dbname] = new Table(env.openDB(conf), /** @type {typeof common.IKey} */ (d.key), /** @type {typeof common.IValue} */ (d.value))
     }
   }
 

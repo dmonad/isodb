@@ -177,9 +177,8 @@ export class ITable {
   /**
    * @param {KEY} _key
    * @param {VALUE} _value
-   * @return {Promise<void>}
    */
-  async set (_key, _value) {
+  set (_key, _value) {
     error.methodUnimplemented()
   }
 

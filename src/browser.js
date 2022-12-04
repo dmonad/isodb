@@ -64,10 +64,9 @@ class Table {
   /**
    * @param {KEY} key
    * @param {VALUE} value
-   * @return {Promise<void>}
    */
   set (key, value) {
-    return idb.put(this.store, encodeValue(value), encodeKey(key))
+    idb.put(this.store, encodeValue(value), encodeKey(key))
   }
 
   /**
@@ -123,6 +122,7 @@ class DB {
   }
 
   /**
+   * @todo Implement forceflush in idb https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API/Using_IndexedDB?retiredLocale=de#adding_retrieving_and_removing_data
    * @template T
    * @param {function(common.ITransaction<DEF>): Promise<T>} f
    * @return {Promise<T>}
