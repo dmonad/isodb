@@ -40,7 +40,7 @@ const encodeKey = key => {
  * @template {common.IKey} KEY
  * @template {common.IValue} VALUE
  */
-export class IsoTable {
+class Table {
   /**
    * @param {IDBObjectStore} store
    * @param {typeof common.IKey} K
@@ -88,31 +88,31 @@ export class IsoTable {
  * @template {{[key: string]: common.ITableDef}} DEF
  * @implements common.ITransaction<DEF>
  */
-export class Transaction {
+class Transaction {
   /**
-   * @param {IsoDB<DEF>} db
+   * @param {DB<DEF>} db
    */
   constructor (db) {
     this.db = db
     const dbKeys = object.keys(db.def)
     const stores = idb.transact(db.db, dbKeys, 'readwrite')
     /**
-     * @type {{ [Tablename in keyof DEF]: common.IIsoTable<InstanceType<DEF[Tablename]["key"]>, InstanceType<DEF[Tablename]["value"]>> }}
+     * @type {{ [Tablename in keyof DEF]: common.ITable<InstanceType<DEF[Tablename]["key"]>, InstanceType<DEF[Tablename]["value"]>> }}
      */
     this.tables = /** @type {any} */ ({})
     const tables = /** @type {any} */ (this.tables)
     dbKeys.forEach((key, i) => {
       const d = db.def[key]
-      tables[key] = new IsoTable(stores[i], d.key, d.value)
+      tables[key] = new Table(stores[i], d.key, d.value)
     })
   }
 }
 
 /**
  * @template {common.IDbDef} DEF
- * @implements common.IIsoDB<DEF>
+ * @implements common.IDB<DEF>
  */
-export class IsoDB {
+class DB {
   /**
    * @param {IDBDatabase} db
 *  * @param {DEF} def
@@ -144,7 +144,7 @@ export class IsoDB {
  *
  * @param {string} name
  * @param {DEF} def
- * @return {Promise<common.IIsoDB<DEF>>}
+ * @return {Promise<common.IDB<DEF>>}
  */
 export const openDB = (name, def) =>
   idb.openDB(name, db => {
@@ -154,7 +154,7 @@ export const openDB = (name, def) =>
       stores.push([key, { autoIncrement }])
     }
     idb.createStores(db, stores)
-  }).then(db => new IsoDB(db, def))
+  }).then(db => new DB(db, def))
 
 /**
  * @param {string} name

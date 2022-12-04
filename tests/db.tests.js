@@ -1,7 +1,6 @@
 
 import * as t from 'lib0/testing'
 import * as logging from 'lib0/logging'
-import * as isoLmdb from '../src/node.js'
 
 /**
  * @type {Array<import('../src/node.js') | import('../src/browser.js')>}
@@ -27,11 +26,8 @@ export const testTransactionsAreExecutedOneAfterAnother = async tc => {
   for (const iso of isoImpls) {
     await t.groupAsync(iso.name, async () => {
       await iso.deleteDB(getDbName(tc.testName))
-      const def = { abc: { key: isoLmdb.StringKey, value: isoLmdb.AnyValue }, xyz: { key: isoLmdb.AutoKey, value: isoLmdb.AnyValue } }
-      /**
-       * @type {isoLmdb.IIsoDB<def>}
-       */
-      const db = await isoLmdb.openDB(getDbName(tc.testName), def)
+      const def = { abc: { key: iso.StringKey, value: iso.AnyValue }, xyz: { key: iso.AutoKey, value: iso.AnyValue } }
+      const db = await iso.openDB(getDbName(tc.testName), def)
       /**
        * @type {Array<string>}
        */
@@ -107,9 +103,6 @@ export const testBenchmark = async tc => {
       const n = 5000
       const def = { abc: { key: iso.StringKey, value: iso.AnyValue }, auto: { key: iso.AutoKey, value: iso.AnyValue } }
       await t.measureTimeAsync(`${iso.name}: Time to insert ${n} elements`, async () => {
-        /**
-         * @type {isoLmdb.IIsoDB<typeof def>}
-         */
         const db = await iso.openDB(getDbName(tc.testName), def)
         await db.transact(async tr => {
           const abcTable = tr.tables.abc
@@ -131,7 +124,7 @@ export const testBenchmark = async tc => {
       })
 
       /**
-       * @type {Array<isoLmdb.AutoKey>}
+       * @type {Array<import('../src/common.js').AutoKey>}
        */
       const keys = []
       await t.measureTimeAsync(`${iso.name}: Time to insert ${n} elements (autokey))`, async () => {

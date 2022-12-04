@@ -11,9 +11,9 @@ if (isBrowser) {
   log.createVConsole(document.body)
 }
 
-runTests({
+runTests(/** @type {any} */ ({
   db
-}).then(success => {
+})).then(success => {
   /* istanbul ignore next */
   if (isNode) {
     process.exit(success ? 0 : 1)

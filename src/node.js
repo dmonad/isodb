@@ -3,10 +3,8 @@ import * as encoding from 'lib0/encoding'
 import * as decoding from 'lib0/decoding'
 import * as error from 'lib0/error'
 import lmdb from 'lmdb'
-// @ts-ignore
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import { Buffer } from 'node:buffer'
 
 export * from './common.js'
 
@@ -28,26 +26,17 @@ const getLmdbKeyType = keytype => {
 }
 
 /**
- * @param {encoding.Encoder} encoder
- */
-const encoderToBuffer = (encoder) => {
-  const arr = encoding.toUint8Array(encoder)
-  return Buffer.from(arr.buffer, arr.byteOffset, arr.byteLength)
-}
-
-/**
  * @param {common.IValue} value
- * @return {Buffer}
  */
 const encodeValue = value => {
   const encoder = encoding.createEncoder()
   value.encode(encoder)
-  return encoderToBuffer(encoder)
+  return encoding.toUint8Array(encoder)
 }
 
 /**
  * @param {common.IKey} key
- * @return {Buffer|string|number}
+ * @return {Uint8Array|string|number}
  */
 const encodeKey = key => {
   switch (key.constructor) {
@@ -58,15 +47,15 @@ const encodeKey = key => {
   }
   const encoder = encoding.createEncoder()
   key.encode(encoder)
-  return encoderToBuffer(encoder)
+  return encoding.toUint8Array(encoder)
 }
 
 /**
  * @template {common.IKey} KEY
  * @template {common.IValue} VALUE
- * @implements common.IIsoTable<KEY, VALUE>
+ * @implements common.ITable<KEY, VALUE>
  */
-export class IsoTable {
+class Table {
   /**
    * @param {lmdb.Database} t
    * @param {any} keytype
@@ -117,9 +106,9 @@ export class IsoTable {
  * @template {{[key: string]: common.ITableDef}} DEF
  * @implements common.ITransaction<DEF>
  */
-export class Transaction {
+class Transaction {
   /**
-   * @param {IsoDB<DEF>} db
+   * @param {DB<DEF>} db
    */
   constructor (db) {
     this.db = db
@@ -129,9 +118,9 @@ export class Transaction {
 
 /**
  * @template {common.IDbDef} DEF
- * @implements common.IIsoDB<DEF>
+ * @implements common.IDB<DEF>
  */
-export class IsoDB {
+class DB {
   /**
    * @param {lmdb.RootDatabase} env
 *  * @param {DEF} def
@@ -140,7 +129,7 @@ export class IsoDB {
     this.def = def
     this.env = env
     /**
-     * @type {{ [Tablename in keyof DEF]: IsoTable<InstanceType<DEF[Tablename]["key"]>, InstanceType<DEF[Tablename]["value"]>> }}
+     * @type {{ [Tablename in keyof DEF]: Table<InstanceType<DEF[Tablename]["key"]>, InstanceType<DEF[Tablename]["value"]>> }}
      */
     this.tables = /** @type {any} */ ({})
     for (const dbname in def) {
@@ -153,7 +142,7 @@ export class IsoDB {
         encoding: 'binary',
         keyEncoding: getLmdbKeyType(d.key)
       }
-      this.tables[dbname] = new IsoTable(env.openDB(conf), /** @type {any} */ (d.key), /** @type {any} */ (d.value))
+      this.tables[dbname] = new Table(env.openDB(conf), /** @type {any} */ (d.key), /** @type {any} */ (d.value))
     }
   }
 
@@ -182,7 +171,7 @@ export class IsoDB {
  *
  * @param {string} location
  * @param {DEF} def
- * @return {Promise<common.IIsoDB<DEF>>}
+ * @return {Promise<common.IDB<DEF>>}
  */
 export const openDB = async (location, def) => {
   await fs.mkdir(path.dirname(location), { recursive: true })
@@ -191,7 +180,7 @@ export const openDB = async (location, def) => {
     maxDbs: Object.keys(def).length
     // compression: true // @todo add an option to enable compression when available
   })
-  return new IsoDB(env, def)
+  return new DB(env, def)
 }
 
 /**

@@ -162,8 +162,10 @@ export class StringKey {
 /**
  * @template {IKey} KEY
  * @template {IValue} VALUE
+ *
+ * @interface
  */
-export class IIsoTable {
+export class ITable {
   /**
    * @param {KEY} _key
    * @return {Promise<VALUE>}
@@ -194,15 +196,17 @@ export class IIsoTable {
 
 /**
  * @template {{[key: string]: ITableDef}} DEF
+ *
+ * @interface
  */
 export class ITransaction {
   /**
-   * @param {IIsoDB<DEF>} db
+   * @param {IDB<DEF>} db
    */
   constructor (db) {
     this.db = db
     /**
-     * @type {{ [Tablename in keyof DEF]: IIsoTable<InstanceType<DEF[Tablename]["key"]>, InstanceType<DEF[Tablename]["value"]>> }}
+     * @type {{ [Tablename in keyof DEF]: ITable<InstanceType<DEF[Tablename]["key"]>, InstanceType<DEF[Tablename]["value"]>> }}
      */
     this.tables = /** @type {any} */ ({})
   }
@@ -210,8 +214,10 @@ export class ITransaction {
 
 /**
  * @template {IDbDef} DEF
+ *
+.* @interface
  */
-export class IIsoDB {
+export class IDB {
   /**
    * @template T
    * @param {function(ITransaction<DEF>): Promise<T>} _f
