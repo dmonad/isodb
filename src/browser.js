@@ -119,13 +119,12 @@ class Table {
   }
 
   /**
-   * @todo iterate should support range limit + test this limit behavior
-   *
    * @param {common.RangeOption<KEY>} range
    * @param {function(common.ICursor<KEY,VALUE>):void} f
    * @return {Promise<void>}
    */
   async iterate (range, f) {
+    let cnt = 0
     let stopped = false
     const stop = () => {
       stopped = true
@@ -133,7 +132,7 @@ class Table {
     const lrange = toNativeRange(range)
     await idb.iterate(this.store, lrange, (value, key) => {
       f({ stop, value: /** @type {VALUE} */ (this.V.decode(decoding.createDecoder(value))), key: /** @type {KEY} */ (this._dK(key)) })
-      if (stopped) {
+      if (stopped || (range.limit != null && ++cnt >= range.limit)) {
         return false
       }
     }, range.reverse ? 'prev' : 'next')

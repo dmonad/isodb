@@ -181,6 +181,20 @@ export const testIterator = async tc => {
         })
         t.assert(read.length === 1 && read.every((v, index) => v === '' + (index + 2)))
       })
+      // range limit
+      await db.transact(async tr => {
+        /**
+         * @type {Array<string>}
+         */
+        const read = []
+        await tr.tables.strings.iterate({ start: new iso.StringKey('1'), startExclusive: true, limit: 5 }, (cursor) => {
+          const k = cursor.key
+          const v = cursor.value
+          t.compare(k.id, v.v)
+          read.push(k.id)
+        })
+        t.assert(read.length === 5 && read.every((v, index) => v === '' + (index + 2)))
+      })
     })
   }
 }

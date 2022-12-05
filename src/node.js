@@ -185,13 +185,14 @@ class Table {
    * @return {Promise<void>}
    */
   iterate (range, f) {
+    let cnt = 0
     let stopped = false
     const stop = () => {
       stopped = true
     }
     for (const { key, value } of this.t.getRange(toNativeRange(range))) {
       f({ stop, key: /** @type {KEY} */ (this._dK(key)), value: /** @type {VALUE} */ (this.V.decode(decoding.createDecoder(value))) })
-      if (stopped) {
+      if (stopped || (range.limit != null && ++cnt >= range.limit)) {
         break
       }
     }
