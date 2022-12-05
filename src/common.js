@@ -188,7 +188,7 @@ export class StringKey {
  *
  * @interface
  */
-export class ITable {
+export class ITableReadonly {
   /**
    * @param {KEY} _key
    * @return {Promise<VALUE>}
@@ -222,6 +222,24 @@ export class ITable {
   }
 
   /**
+   * @param {RangeOption<KEY>} _range
+   * @param {function(ICursor<KEY,VALUE>):void} _f
+   * @return {Promise<void>}
+   */
+  iterate (_range, _f) {
+    error.methodUnimplemented()
+  }
+}
+
+/**
+ * @template {IKey} KEY
+ * @template {IValue} VALUE
+ *
+ * @interface
+ * @extends ITableReadonly<KEY,VALUE>
+ */
+export class ITable extends ITableReadonly {
+  /**
    * @param {KEY} _key
    * @param {VALUE} _value
    */
@@ -238,15 +256,6 @@ export class ITable {
   add (_value) {
     error.methodUnimplemented()
   }
-
-  /**
-   * @param {RangeOption<KEY>} _range
-   * @param {function(ICursor<KEY,VALUE>):void} _f
-   * @return {Promise<void>}
-   */
-  iterate (_range, _f) {
-    error.methodUnimplemented()
-  }
 }
 
 /**
@@ -256,12 +265,28 @@ export class ITable {
  */
 export class ITransaction {
   /**
-   * @param {IDB<DEF>} db
+   * @param {IDB<DEF>} _db
    */
-  constructor (db) {
-    this.db = db
+  constructor (_db) {
     /**
      * @type {{ [Tablename in keyof DEF]: ITable<InstanceType<DEF[Tablename]["key"]>, InstanceType<DEF[Tablename]["value"]>> }}
+     */
+    this.tables = /** @type {any} */ ({})
+  }
+}
+
+/**
+ * @template {{[key: string]: ITableDef}} DEF
+ *
+ * @interface
+ */
+export class ITransactionReadonly {
+  /**
+   * @param {IDB<DEF>} _db
+   */
+  constructor (_db) {
+    /**
+     * @type {{ [Tablename in keyof DEF]: ITableReadonly<InstanceType<DEF[Tablename]["key"]>, InstanceType<DEF[Tablename]["value"]>> }}
      */
     this.tables = /** @type {any} */ ({})
   }
@@ -279,6 +304,15 @@ export class IDB {
    * @return {Promise<T>}
    */
   async transact (_f) {
+    error.methodUnimplemented()
+  }
+
+  /**
+   * @template T
+   * @param {function(ITransactionReadonly<DEF>): Promise<T>|T} _f
+   * @return {Promise<T>}
+   */
+  async transactReadonly (_f) {
     error.methodUnimplemented()
   }
 

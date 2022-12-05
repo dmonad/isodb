@@ -34,7 +34,7 @@ export const testIterator = async tc => {
           tr.tables.strings.set(new iso.StringKey(i + ''), new iso.AnyValue(i + ''))
         }
       })
-      await db.transact(async tr => {
+      await db.transactReadonly(async tr => {
         /**
          * @type {Array<number>}
          */
@@ -50,7 +50,7 @@ export const testIterator = async tc => {
         })
         t.assert(read.length === 27 && read.every((v, index) => v === index + 1))
       })
-      await db.transact(async tr => {
+      await db.transactReadonly(async tr => {
         /**
          * @type {Array<number>}
          */
@@ -63,7 +63,7 @@ export const testIterator = async tc => {
         })
         t.assert(read.length === 28 && read.every((v, index) => v === index + 2))
       })
-      await db.transact(async tr => {
+      await db.transactReadonly(async tr => {
         /**
          * @type {Array<number>}
          */
@@ -76,7 +76,7 @@ export const testIterator = async tc => {
         })
         t.assert(read.length === 2 && read.every((v, index) => v === index + 2))
       })
-      await db.transact(async tr => {
+      await db.transactReadonly(async tr => {
         /**
          * @type {Array<number>}
          */
@@ -89,7 +89,7 @@ export const testIterator = async tc => {
         })
         t.assert(read.length === 1 && read.every((v, index) => v === index + 3))
       })
-      await db.transact(async tr => {
+      await db.transactReadonly(async tr => {
         /**
          * @type {Array<number>}
          */
@@ -102,7 +102,7 @@ export const testIterator = async tc => {
         })
         t.assert(read.length === 1 && read.every((v, index) => v === index + 2))
       })
-      await db.transact(async tr => {
+      await db.transactReadonly(async tr => {
         /**
          * @type {Array<number>}
          */
@@ -115,7 +115,7 @@ export const testIterator = async tc => {
         })
         t.assert(read.length === 27 && read.every((v, index) => v === index + 3))
       })
-      await db.transact(async tr => {
+      await db.transactReadonly(async tr => {
         /**
          * @type {Array<number>}
          */
@@ -128,7 +128,7 @@ export const testIterator = async tc => {
         })
         t.assert(read.length === 2 && read.every((v, index) => v === index + 1))
       })
-      await db.transact(async tr => {
+      await db.transactReadonly(async tr => {
         /**
          * @type {Array<number>}
          */
@@ -141,7 +141,7 @@ export const testIterator = async tc => {
         })
         t.assert(read.length === 28 && read.every((v, index) => v === index + 2))
       })
-      await db.transact(async tr => {
+      await db.transactReadonly(async tr => {
         /**
          * @type {Array<number>}
          */
@@ -155,7 +155,7 @@ export const testIterator = async tc => {
         t.assert(read.length === 3 && read.every((v, index) => v === index + 1))
       })
       // working on strings
-      await db.transact(async tr => {
+      await db.transactReadonly(async tr => {
         /**
          * @type {Array<string>}
          */
@@ -168,7 +168,7 @@ export const testIterator = async tc => {
         })
         t.assert(read.length === 3 && read.every((v, index) => v === '' + (index + 1)))
       })
-      await db.transact(async tr => {
+      await db.transactReadonly(async tr => {
         /**
          * @type {Array<string>}
          */
@@ -182,7 +182,7 @@ export const testIterator = async tc => {
         t.assert(read.length === 1 && read.every((v, index) => v === '' + (index + 2)))
       })
       // range limit
-      await db.transact(async tr => {
+      await db.transactReadonly(async tr => {
         /**
          * @type {Array<string>}
          */
@@ -311,7 +311,7 @@ export const testBenchmark = async tc => {
   for (const iso of isoImpls) {
     await t.groupAsync(iso.name, async () => {
       await iso.deleteDB(getDbName(tc.testName))
-      const n = 1000
+      const n = 2000
       const def = { abc: { key: iso.StringKey, value: iso.AnyValue }, auto: { key: iso.AutoKey, value: iso.AnyValue } }
       await t.measureTimeAsync(`${iso.name}: Time to insert ${n} elements`, async () => {
         const db = await iso.openDB(getDbName(tc.testName), def)
@@ -325,7 +325,7 @@ export const testBenchmark = async tc => {
       })
       await t.measureTimeAsync(`${iso.name}: Time to retrieve ${n} elements`, async () => {
         const db = await iso.openDB(getDbName(tc.testName), def)
-        await db.transact(async tr => {
+        await db.transactReadonly(async tr => {
           const abcTable = tr.tables.abc
           for (let i = 0; i < n; i++) {
             const v = await abcTable.get(new iso.StringKey('key' + i))
@@ -335,7 +335,7 @@ export const testBenchmark = async tc => {
       })
       await t.measureTimeAsync(`${iso.name}: Time to iterate ${n} elements`, async () => {
         const db = await iso.openDB(getDbName(tc.testName), def)
-        await db.transact(async tr => {
+        await db.transactReadonly(async tr => {
           const abcTable = tr.tables.abc
           let retrieved = 0
           await abcTable.iterate({}, _cursor => {
@@ -346,21 +346,21 @@ export const testBenchmark = async tc => {
       })
       await t.measureTimeAsync(`${iso.name}: Time to get ${n} entries`, async () => {
         const db = await iso.openDB(getDbName(tc.testName), def)
-        await db.transact(async tr => {
+        await db.transactReadonly(async tr => {
           const entries = await tr.tables.abc.getEntries({})
           t.assert(entries.length === n)
         })
       })
       await t.measureTimeAsync(`${iso.name}: Time to get ${n} keys`, async () => {
         const db = await iso.openDB(getDbName(tc.testName), def)
-        await db.transact(async tr => {
+        await db.transactReadonly(async tr => {
           const keys = await tr.tables.abc.getKeys({})
           t.assert(keys.length === n)
         })
       })
       await t.measureTimeAsync(`${iso.name}: Time to get ${n} values`, async () => {
         const db = await iso.openDB(getDbName(tc.testName), def)
-        await db.transact(async tr => {
+        await db.transactReadonly(async tr => {
           const values = await tr.tables.abc.getValues({})
           t.assert(values.length === n)
         })
@@ -382,7 +382,7 @@ export const testBenchmark = async tc => {
       })
       await t.measureTimeAsync(`${iso.name}: Time to retrieve ${n} elements (autokey))`, async () => {
         const db = await iso.openDB(getDbName(tc.testName), def)
-        await db.transact(async tr => {
+        await db.transactReadonly(async tr => {
           const autoTable = tr.tables.auto
           for (let i = 0; i < keys.length; i++) {
             const v = await autoTable.get(keys[i])
@@ -392,7 +392,7 @@ export const testBenchmark = async tc => {
       })
       await t.measureTimeAsync(`${iso.name}: Time to iterate ${n} elements (autokey))`, async () => {
         const db = await iso.openDB(getDbName(tc.testName), def)
-        await db.transact(async tr => {
+        await db.transactReadonly(async tr => {
           const autoTable = tr.tables.auto
           let retrieved = 0
           await autoTable.iterate({}, cursor => {
@@ -404,21 +404,21 @@ export const testBenchmark = async tc => {
       })
       await t.measureTimeAsync(`${iso.name}: Time to get ${n} entries (autokey))`, async () => {
         const db = await iso.openDB(getDbName(tc.testName), def)
-        await db.transact(async tr => {
+        await db.transactReadonly(async tr => {
           const entries = await tr.tables.auto.getEntries({})
           t.assert(entries.length === n)
         })
       })
       await t.measureTimeAsync(`${iso.name}: Time to get ${n} keys (autokey))`, async () => {
         const db = await iso.openDB(getDbName(tc.testName), def)
-        await db.transact(async tr => {
+        await db.transactReadonly(async tr => {
           const keys = await tr.tables.auto.getKeys({})
           t.assert(keys.length === n)
         })
       })
       await t.measureTimeAsync(`${iso.name}: Time to get ${n} values (autokey))`, async () => {
         const db = await iso.openDB(getDbName(tc.testName), def)
-        await db.transact(async tr => {
+        await db.transactReadonly(async tr => {
           const values = await tr.tables.auto.getValues({})
           t.assert(values.length === n)
         })

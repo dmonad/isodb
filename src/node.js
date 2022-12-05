@@ -156,6 +156,26 @@ class Table {
   }
 
   /**
+   * @param {common.RangeOption<KEY>} range
+   * @param {function(common.ICursor<KEY,VALUE>):void} f
+   * @return {Promise<void>}
+   */
+  iterate (range, f) {
+    let cnt = 0
+    let stopped = false
+    const stop = () => {
+      stopped = true
+    }
+    for (const { key, value } of this.t.getRange(toNativeRange(range))) {
+      f({ stop, key: /** @type {KEY} */ (this._dK(key)), value: /** @type {VALUE} */ (this.V.decode(decoding.createDecoder(value))) })
+      if (stopped || (range.limit != null && ++cnt >= range.limit)) {
+        break
+      }
+    }
+    return promise.resolve()
+  }
+
+  /**
    * @param {KEY} key
    * @param {VALUE} value
    */
@@ -177,26 +197,6 @@ class Table {
     const key = lastKey == null ? 1 : /** @type {number} */ (lastKey) + 1
     await this.t.put(key, encodeValue(value))
     return /** @type {any} */ (new common.AutoKey(key))
-  }
-
-  /**
-   * @param {common.RangeOption<KEY>} range
-   * @param {function(common.ICursor<KEY,VALUE>):void} f
-   * @return {Promise<void>}
-   */
-  iterate (range, f) {
-    let cnt = 0
-    let stopped = false
-    const stop = () => {
-      stopped = true
-    }
-    for (const { key, value } of this.t.getRange(toNativeRange(range))) {
-      f({ stop, key: /** @type {KEY} */ (this._dK(key)), value: /** @type {VALUE} */ (this.V.decode(decoding.createDecoder(value))) })
-      if (stopped || (range.limit != null && ++cnt >= range.limit)) {
-        break
-      }
-    }
-    return promise.resolve()
   }
 }
 
@@ -248,6 +248,21 @@ class DB {
    * @return {Promise<T>}
    */
   async transact (f) {
+    return this.env.transaction(() => {
+      /**
+       * @type {Transaction<DEF>}
+       */
+      const tr = new Transaction(this)
+      return f(tr)
+    })
+  }
+
+  /**
+   * @template T
+   * @param {function(common.ITransactionReadonly<DEF>): Promise<T>} f
+   * @return {Promise<T>}
+   */
+  async transactReadonly (f) {
     return this.env.transaction(() => {
       /**
        * @type {Transaction<DEF>}

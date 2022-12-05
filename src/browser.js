@@ -73,8 +73,10 @@ const toNativeRange = (range) => {
 /**
  * @template {common.IKey} KEY
  * @template {common.IValue} VALUE
+ *
+ * @implements {common.ITableReadonly<KEY,VALUE>}
  */
-class Table {
+class TableReadonly {
   /**
    * @param {IDBObjectStore} store
    * @param {typeof common.IKey} K
@@ -95,27 +97,6 @@ class Table {
   async get (key) {
     const v = /** @type {Uint8Array} */ (await idb.get(this.store, encodeKey(key)))
     return /** @type {any} */ (this.V.decode(decoding.createDecoder(v)))
-  }
-
-  /**
-   * @param {KEY} key
-   * @param {VALUE} value
-   */
-  set (key, value) {
-    idb.put(this.store, encodeValue(value), encodeKey(key))
-  }
-
-  /**
-   * Only works with AutoKey
-   *
-   * @param {VALUE} value
-   * @return {Promise<KEY>}
-   */
-  async add (value) {
-    if (this.K !== common.AutoKey) {
-      throw error.create('Expected key to be an AutoKey')
-    }
-    return idb.put(this.store, encodeValue(value)).then(k => /** @type {any} */ (new this.K(k)))
   }
 
   /**
@@ -173,17 +154,48 @@ class Table {
 }
 
 /**
+ * @template {common.IKey} KEY
+ * @template {common.IValue} VALUE
+ *
+ * @extends TableReadonly<KEY,VALUE>
+ * @implements {common.ITable<KEY,VALUE>}
+ */
+class Table extends TableReadonly {
+  /**
+   * @param {KEY} key
+   * @param {VALUE} value
+   */
+  set (key, value) {
+    idb.put(this.store, encodeValue(value), encodeKey(key))
+  }
+
+  /**
+   * Only works with AutoKey
+   *
+   * @param {VALUE} value
+   * @return {Promise<KEY>}
+   */
+  async add (value) {
+    if (this.K !== common.AutoKey) {
+      throw error.create('Expected key to be an AutoKey')
+    }
+    return idb.put(this.store, encodeValue(value)).then(k => /** @type {any} */ (new this.K(k)))
+  }
+}
+
+/**
  * @template {{[key: string]: common.ITableDef}} DEF
  * @implements common.ITransaction<DEF>
  */
 class Transaction {
   /**
    * @param {DB<DEF>} db
+   * @param {boolean} [readonly]
    */
-  constructor (db) {
+  constructor (db, readonly = false) {
     this.db = db
     const dbKeys = object.keys(db.def)
-    const stores = idb.transact(db.db, dbKeys, 'readwrite')
+    const stores = idb.transact(db.db, dbKeys, readonly ? 'readonly' : 'readwrite')
     /**
      * @type {{ [Tablename in keyof DEF]: common.ITable<InstanceType<DEF[Tablename]["key"]>, InstanceType<DEF[Tablename]["value"]>> }}
      */
@@ -196,6 +208,19 @@ class Transaction {
   }
 }
 
+/**
+ * @template {{[key: string]: common.ITableDef}} DEF
+ * @implements common.ITransactionReadonly<DEF>
+ * @extends Transaction<DEF>
+ */
+class TransactionReadonly extends Transaction {
+  /**
+   * @param {DB<DEF>} db
+   */
+  constructor (db) {
+    super(db, true)
+  }
+}
 /**
  * @template {common.IDbDef} DEF
  * @implements common.IDB<DEF>
@@ -221,6 +246,20 @@ class DB {
      * @type {common.ITransaction<DEF>}
      */
     const tr = new Transaction(this)
+    return f(tr)
+  }
+
+  /**
+   * @todo Implement forceflush in idb https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API/Using_IndexedDB?retiredLocale=de#adding_retrieving_and_removing_data
+   * @template T
+   * @param {function(common.ITransactionReadonly<DEF>): Promise<T>} f
+   * @return {Promise<T>}
+   */
+  transactReadonly (f) {
+    /**
+     * @type {common.ITransactionReadonly<DEF>}
+     */
+    const tr = new TransactionReadonly(this)
     return f(tr)
   }
 
