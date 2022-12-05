@@ -41,8 +41,11 @@ const toNativeRange = range => {
   if (range.end) {
     lrange.end = encodeKey(range.end, range.endExclusive !== true)
   }
-  if (lrange.reverse) {
+  if (range.reverse) {
     lrange.reverse = range.reverse
+  }
+  if (range.limit != null) {
+    lrange.limit = range.limit
   }
   return lrange
 }

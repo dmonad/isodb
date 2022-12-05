@@ -119,6 +119,8 @@ class Table {
   }
 
   /**
+   * @todo iterate should support range limit + test this limit behavior
+   *
    * @param {common.RangeOption<KEY>} range
    * @param {function(common.ICursor<KEY,VALUE>):void} f
    * @return {Promise<void>}
@@ -142,7 +144,7 @@ class Table {
    * @return {Promise<Array<{ key: KEY, value: VALUE }>>}
    */
   async getEntries (range) {
-    const entries = await idb.getAllKeysValues(this.store, toNativeRange(range) || undefined)
+    const entries = await idb.getAllKeysValues(this.store, toNativeRange(range) || undefined, range.limit)
     return entries.map(entry => ({
       value: /** @type {VALUE} */ (this.V.decode(decoding.createDecoder(entry.v))), key: /** @type {KEY} */ (this._dK(entry.k))
     }))
@@ -153,7 +155,7 @@ class Table {
    * @return {Promise<Array<VALUE>>}
    */
   async getValues (range) {
-    const values = await idb.getAll(this.store, toNativeRange(range) || undefined)
+    const values = await idb.getAll(this.store, toNativeRange(range) || undefined, range.limit)
     return values.map(value =>
       /** @type {VALUE} */ (this.V.decode(decoding.createDecoder(value)))
     )
@@ -164,7 +166,7 @@ class Table {
    * @return {Promise<Array<KEY>>}
    */
   async getKeys (range) {
-    const keys = await idb.getAllKeys(this.store, toNativeRange(range) || undefined)
+    const keys = await idb.getAllKeys(this.store, toNativeRange(range) || undefined, range.limit)
     return keys.map(key =>
       /** @type {KEY} */ (this._dK(key))
     )

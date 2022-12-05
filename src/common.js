@@ -168,6 +168,7 @@ export class StringKey {
  * @property {KEY} [RangeOption.end]
  * @property {boolean} [RangeOption.endExclusive]
  * @property {boolean} [RangeOption.reverse]
+ * @property {number} [RangeOption.limit] Number of items to receive
  */
 
 /**

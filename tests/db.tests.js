@@ -236,7 +236,7 @@ export const testTransactionsAreExecutedOneAfterAnother = async tc => {
 /**
  * @param {t.TestCase} tc
  */
-export const testSomething = async tc => {
+export const testBasics = async tc => {
   for (const iso of isoImpls) {
     await t.groupAsync(iso.name, async () => {
       await iso.deleteDB(getDbName(tc.testName))
@@ -252,6 +252,39 @@ export const testSomething = async tc => {
         const key = await xyzTable.add(new iso.AnyValue({ test: 'someVal' }))
         const v = await xyzTable.get(key)
         t.compare(v.v, { test: 'someVal' }, 'checked someval')
+      })
+    })
+  }
+}
+
+/**
+ * @param {t.TestCase} tc
+ */
+export const testRetrieval = async tc => {
+  for (const iso of isoImpls) {
+    await t.groupAsync(iso.name, async () => {
+      await iso.deleteDB(getDbName(tc.testName))
+      const def = { auto: { key: iso.AutoKey, value: iso.AnyValue } }
+      const db = await iso.openDB(getDbName(tc.testName), def)
+      await db.transact(async tr => {
+        for (let i = 1; i <= 10; i++) {
+          await tr.tables.auto.add(new iso.AnyValue(i))
+        }
+        // Keys
+        const limitNorangeKeys = await tr.tables.auto.getKeys({ limit: 3 })
+        t.assert(limitNorangeKeys.length === 3 && limitNorangeKeys[0].id === 1)
+        const limitRangedKeys = await tr.tables.auto.getKeys({ limit: 3, start: new iso.AutoKey(3) })
+        t.assert(limitRangedKeys.length === 3 && limitRangedKeys[0].id === 3)
+        // Vals
+        const limitNorangeVals = await tr.tables.auto.getValues({ limit: 3 })
+        t.assert(limitNorangeVals.length === 3 && limitNorangeVals[0].v === 1)
+        const limitRangedVals = await tr.tables.auto.getValues({ limit: 3, start: new iso.AutoKey(3) })
+        t.assert(limitRangedVals.length === 3 && limitRangedVals[0].v === 3)
+        // Entries
+        const limitNorangeEntries = await tr.tables.auto.getEntries({ limit: 3 })
+        t.assert(limitNorangeEntries.length === 3 && limitNorangeEntries[0].key.id === 1)
+        const limitRangedEntries = await tr.tables.auto.getEntries({ limit: 3, start: new iso.AutoKey(3) })
+        t.assert(limitRangedEntries.length === 3 && limitRangedEntries[0].key.id === 3)
       })
     })
   }
