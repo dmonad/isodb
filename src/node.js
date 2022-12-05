@@ -231,13 +231,11 @@ class DB {
     this.tables = /** @type {any} */ ({})
     for (const dbname in def) {
       const d = def[dbname]
-      /**
-       * @type {lmdb.DatabaseOptions & { name: string }}
-       */
+      const keyEncoding = getLmdbKeyType(d.key)
       const conf = {
         name: dbname,
-        encoding: 'binary',
-        keyEncoding: getLmdbKeyType(d.key)
+        encoding: /** @type {'binary'} */ ('binary'),
+        keyEncoding
       }
       this.tables[dbname] = new Table(env.openDB(conf), /** @type {typeof common.IKey} */ (d.key), /** @type {typeof common.IValue} */ (d.value))
     }
@@ -274,7 +272,8 @@ export const openDB = async (location, def) => {
   await fs.mkdir(path.dirname(location), { recursive: true })
   const env = lmdb.open({
     path: location,
-    maxDbs: Object.keys(def).length
+    maxDbs: Object.keys(def).length,
+    cache: true
     // compression: true // @todo add an option to enable compression when available
   })
   return new DB(env, def)
