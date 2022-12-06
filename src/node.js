@@ -100,7 +100,7 @@ const getKeyDecoder = (keytype) => {
  * @template {common.IEncodable} VALUE
  * @template {{[key: string]: common.ITableIndex<any, any, any>}} INDEX
  *
- * @implements common.ITable<KEY, VALUE, INDEX>
+ * @implements common.ITable<KEY,VALUE,INDEX,undefined>
  */
 class Table {
   /**
@@ -132,11 +132,13 @@ class Table {
   /**
    * @todo rename entries
    * @param {common.RangeOption<KEY>} range
-   * @return {Promise<Array<{ key: KEY, value: VALUE }>>}
+   * @return {Promise<Array<{ key: KEY, value: VALUE, fkey: undefined }>>}
    */
   getEntries (range) {
     return Promise.resolve(this.t.getRange(toNativeRange(range)).map(entry => ({
-      key: /** @type {KEY} */ (this._dK(entry.key)), value: /** @type {VALUE} */ (this.V.decode(decoding.createDecoder(entry.value)))
+      key: /** @type {KEY} */ (this._dK(entry.key)),
+      value: /** @type {VALUE} */ (this.V.decode(decoding.createDecoder(entry.value))),
+      fkey: undefined
     })).asArray)
   }
 
@@ -164,7 +166,7 @@ class Table {
 
   /**
    * @param {common.RangeOption<KEY>} range
-   * @param {function(common.ICursor<KEY,VALUE>):void|Promise<void>} f
+   * @param {function(common.ICursor<KEY,VALUE,undefined>):void|Promise<void>} f
    * @return {Promise<void>}
    */
   async iterate (range, f) {
@@ -174,7 +176,12 @@ class Table {
       stopped = true
     }
     for (const { key, value } of this.t.getRange(toNativeRange(range))) {
-      await f({ stop, key: /** @type {KEY} */ (this._dK(key)), value: /** @type {VALUE} */ (this.V.decode(decoding.createDecoder(value))) })
+      await f({
+        stop,
+        key: /** @type {KEY} */ (this._dK(key)),
+        value: /** @type {VALUE} */ (this.V.decode(decoding.createDecoder(value))),
+        fkey: undefined
+      })
       if (stopped || (range.limit != null && ++cnt >= range.limit)) {
         break
       }

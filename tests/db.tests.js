@@ -457,20 +457,34 @@ export const testIndexing = async tc => {
     })
     await t.groupAsync(`${iso.name}: Using stringified index`, async () => {
       await db.transactReadonly(async tr => {
-        const keys = await tr.tables.auto.indexes.stringified.getKeys({})
-        t.assert(keys.length === n && keys.every((key, index) => key.v === ('' + (index + 1))))
-        const values = await tr.tables.auto.indexes.stringified.getValues({})
-        t.assert(values.length === n)
-        values.forEach((value, index) => {
-          t.compare(value.v, { test: 'someVal' + index })
+        await t.groupAsync('getKeys', async () => {
+          const keys = await tr.tables.auto.indexes.stringified.getKeys({})
+          t.assert(keys.length === n && keys.every((key, index) => key.v === ('' + (index + 1))))
         })
-        {
+        await t.groupAsync('getValues', async () => {
+          const values = await tr.tables.auto.indexes.stringified.getValues({})
+          t.assert(values.length === n)
+          values.forEach((value, index) => {
+            t.compare(value.v, { test: 'someVal' + index })
+          })
+        })
+        await t.groupAsync('getEntries', async () => {
+          const entries = await tr.tables.auto.indexes.stringified.getEntries({})
+          t.assert(entries.length === n)
+          entries.forEach((entry, index) => {
+            t.compare(entry.value.v, { test: 'someVal' + index })
+            t.compare(entry.fkey.v, index + 1)
+          })
+        })
+        await t.groupAsync('iterate', async () => {
           let index = 0
           await tr.tables.auto.indexes.stringified.iterate({ limit: 5 }, async cursor => {
-            t.compare(cursor.value.v, { test: 'someVal' + index++ })
+            t.compare(cursor.value.v, { test: 'someVal' + index })
+            t.compare(cursor.fkey.v, index + 1)
+            index++
           })
           t.assert(index === 5)
-        }
+        })
       })
     })
   }

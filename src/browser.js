@@ -74,7 +74,7 @@ const toNativeRange = (range) => {
  * @template {common.IEncodable} VALUE
  * @template {{[key: string]: common.ITableIndex<any, any, any>}} INDEX
  *
- * @implements {common.ITable<KEY,VALUE,INDEX>}
+ * @implements {common.ITable<KEY,VALUE,INDEX,undefined>}
  */
 class Table {
   /**
@@ -105,7 +105,7 @@ class Table {
 
   /**
    * @param {common.RangeOption<KEY>} range
-   * @param {function(common.ICursor<KEY,VALUE>):void|Promise<void>} f
+   * @param {function(common.ICursor<KEY,VALUE,undefined>):void|Promise<void>} f
    * @return {Promise<void>}
    */
   async iterate (range, f) {
@@ -116,7 +116,12 @@ class Table {
     }
     const lrange = toNativeRange(range)
     await idb.iterate(this.store, lrange, async (value, key) => {
-      await f({ stop, value: /** @type {VALUE} */ (this.V.decode(decoding.createDecoder(value))), key: /** @type {KEY} */ (this._dK(key)) })
+      await f({
+        stop,
+        value: /** @type {VALUE} */ (this.V.decode(decoding.createDecoder(value))),
+        key: /** @type {KEY} */ (this._dK(key)),
+        fkey: undefined
+      })
       if (stopped || (range.limit != null && ++cnt >= range.limit)) {
         return false
       }
@@ -125,12 +130,14 @@ class Table {
 
   /**
    * @param {common.RangeOption<KEY>} range
-   * @return {Promise<Array<{ key: KEY, value: VALUE }>>}
+   * @return {Promise<Array<{ key: KEY, value: VALUE, fkey: undefined }>>}
    */
   async getEntries (range) {
     const entries = await idb.getAllKeysValues(this.store, toNativeRange(range) || undefined, range.limit)
     return entries.map(entry => ({
-      value: /** @type {VALUE} */ (this.V.decode(decoding.createDecoder(entry.v))), key: /** @type {KEY} */ (this._dK(entry.k))
+      value: /** @type {VALUE} */ (this.V.decode(decoding.createDecoder(entry.v))),
+      key: /** @type {KEY} */ (this._dK(entry.k)),
+      fkey: undefined
     }))
   }
 
@@ -204,7 +211,7 @@ class Transaction {
     object.forEach(db.def, (d, dname) => object.keys(d.indexes).forEach(indexname => dbKeys.push(dname + '#' + indexname)))
     const stores = idb.transact(db.db, dbKeys, readonly ? 'readonly' : 'readwrite')
     /**
-     * @type {{ [Tablename in keyof DEF]: common.ITable<InstanceType<DEF[Tablename]["key"]>, InstanceType<DEF[Tablename]["value"]>, DEF[Tablename]["indexes"]> }}
+     * @type {{ [Tablename in keyof DEF]: common.ITable<InstanceType<DEF[Tablename]["key"]>,InstanceType<DEF[Tablename]["value"]>,DEF[Tablename]["indexes"],undefined> }}
      */
     this.tables = /** @type {any} */ ({})
     const tables = /** @type {any} */ (this.tables)
