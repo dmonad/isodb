@@ -206,7 +206,7 @@ export const testTransactionsAreExecutedOneAfterAnother = async tc => {
   for (const iso of isoImpls) {
     await t.groupAsync(iso.name, async () => {
       await iso.deleteDB(getDbName(tc.testName))
-      const def = { abc: { key: iso.StringKey, value: iso.AnyValue, indexes: {} }, xyz: { key: iso.AutoKey, value: iso.AnyValue, indexes: {} } }
+      const def = { abc: { key: iso.StringKey, value: iso.AnyValue }, xyz: { key: iso.AutoKey, value: iso.AnyValue } }
       const db = await iso.openDB(getDbName(tc.testName), def)
       /**
        * @type {Array<string>}
@@ -254,7 +254,7 @@ export const testBasics = async tc => {
   for (const iso of isoImpls) {
     await t.groupAsync(iso.name, async () => {
       await iso.deleteDB(getDbName(tc.testName))
-      const def = { abc: { key: iso.StringKey, value: iso.AnyValue, indexes: {} }, xyz: { key: iso.AutoKey, value: iso.AnyValue, indexes: {} } }
+      const def = { abc: { key: iso.StringKey, value: iso.AnyValue }, xyz: { key: iso.AutoKey, value: iso.AnyValue } }
       const db = await iso.openDB(getDbName(tc.testName), def)
       await db.transact(async tr => {
         const testValue = new iso.AnyValue({ test: 'someVal' })
@@ -278,7 +278,7 @@ export const testRetrieval = async tc => {
   for (const iso of isoImpls) {
     await t.groupAsync(iso.name, async () => {
       await iso.deleteDB(getDbName(tc.testName))
-      const def = { auto: { key: iso.AutoKey, value: iso.AnyValue, indexes: {} } }
+      const def = { auto: { key: iso.AutoKey, value: iso.AnyValue } }
       const db = await iso.openDB(getDbName(tc.testName), def)
       await db.transact(async tr => {
         for (let i = 1; i <= 10; i++) {
