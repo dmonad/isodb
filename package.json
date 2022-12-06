@@ -22,6 +22,10 @@
       }
     }
   },
+  "files": [
+    "dist",
+    "src"
+  ],
   "scripts": {
     "clean": "rm -rf dist",
     "types": "tsc",
