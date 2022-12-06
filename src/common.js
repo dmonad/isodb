@@ -1,6 +1,6 @@
 import * as error from 'lib0/error'
-import * as decoding from 'lib0/decoding' // eslint-disable-line
-import * as encoding from 'lib0/encoding' // eslint-disable-line
+import * as decoding from 'lib0/decoding'
+import * as encoding from 'lib0/encoding'
 import * as promise from 'lib0/promise'
 
 /**
@@ -399,3 +399,20 @@ export class IDB {
   destroy () {
   }
 }
+
+/**
+ * @template {IDbDef} DEF
+ *
+ * @param {string} _location
+ * @param {DEF} _def
+ * @return {Promise<IDB<DEF>>}
+ */
+export const openDB = async (_location, _def) => {
+  error.methodUnimplemented()
+}
+
+/**
+ * @param {string} _path
+ * @return {Promise<void>}
+ */
+export const deleteDB = (_path) => error.methodUnimplemented()

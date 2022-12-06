@@ -1,12 +1,10 @@
 {
   "name": "isodb",
-  "version": "0.2.52",
-  "description": "",
+  "version": "0.0.0",
+  "description": "Isomorphic NoSQL Database",
   "sideEffects": false,
   "type": "module",
-  "main": "./dist/index.cjs",
-  "module": "./index.js",
-  "types": "./index.d.ts",
+  "types": "./dist/src/common.d.ts",
   "funding": {
     "type": "GitHub Sponsors ❤",
     "url": "https://github.com/sponsors/dmonad"
@@ -14,13 +12,19 @@
   "exports": {
     "./package.json": "./package.json",
     ".": {
-      "import": "./index.js",
-      "require": "./dist/index.cjs"
+      "node": {
+        "import": "./src/node.js",
+        "types": "./dist/src/common.d.ts"
+      },
+      "browser": {
+        "import": "./src/browser.js",
+        "types": "./dist/src/common.d.ts"
+      }
     }
   },
   "scripts": {
     "clean": "rm -rf dist",
-    "types": "tsc --outDir .",
+    "types": "tsc",
     "dist": "rollup -c",
     "debug:browser": "rollup -c && concurrently 'rollup -wc' 'http-server -o test.html'",
     "debug:node": "node --inspect-brk tests/index.js",
@@ -67,7 +71,9 @@
     "typescript": "^4.8.4"
   },
   "dependencies": {
-    "lib0": "^0.2.56",
+    "lib0": "^0.2.56"
+  },
+  "optionalDependencies": {
     "lmdb": "^2.7.2"
   }
 }
