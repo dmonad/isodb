@@ -24,7 +24,7 @@ export const testIterator = async tc => {
   for (const iso of isoImpls) {
     await t.groupAsync(iso.name, async () => {
       await iso.deleteDB(getDbName(tc.testName))
-      const def = { strings: { key: iso.StringKey, value: iso.AnyValue, indexes: {} }, auto: { key: iso.AutoKey, value: iso.AnyValue, indexes: {} } }
+      const def = { strings: { key: iso.StringKey, value: iso.AnyValue }, auto: { key: iso.AutoKey, value: iso.AnyValue } }
       const db = await iso.openDB(getDbName(tc.testName), def)
       db.transact(tr => {
         for (let i = 1; i < 30; i++) {
@@ -312,7 +312,7 @@ export const testBenchmark = async tc => {
     await t.groupAsync(iso.name, async () => {
       await iso.deleteDB(getDbName(tc.testName))
       const n = 2000
-      const def = { abc: { key: iso.StringKey, value: iso.AnyValue, indexes: {} }, auto: { key: iso.AutoKey, value: iso.AnyValue, indexes: {} } }
+      const def = { abc: { key: iso.StringKey, value: iso.AnyValue }, auto: { key: iso.AutoKey, value: iso.AnyValue } }
       await t.measureTimeAsync(`${iso.name}: Time to insert ${n} elements`, async () => {
         const db = await iso.openDB(getDbName(tc.testName), def)
         await db.transact(async tr => {

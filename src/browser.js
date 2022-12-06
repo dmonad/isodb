@@ -208,10 +208,10 @@ class Transaction {
   constructor (db, readonly = false) {
     this.db = db
     const dbKeys = object.keys(db.def)
-    object.forEach(db.def, (d, dname) => object.keys(d.indexes).forEach(indexname => dbKeys.push(dname + '#' + indexname)))
+    object.forEach(db.def, (d, dname) => object.keys(d.indexes || {}).forEach(indexname => dbKeys.push(dname + '#' + indexname)))
     const stores = idb.transact(db.db, dbKeys, readonly ? 'readonly' : 'readwrite')
     /**
-     * @type {{ [Tablename in keyof DEF]: common.ITable<InstanceType<DEF[Tablename]["key"]>,InstanceType<DEF[Tablename]["value"]>,DEF[Tablename]["indexes"],undefined> }}
+     * @type {{ [Tablename in keyof DEF]: common.ITable<InstanceType<DEF[Tablename]["key"]>,InstanceType<DEF[Tablename]["value"]>,common.Defined<DEF[Tablename]["indexes"]>,undefined> }}
      */
     this.tables = /** @type {any} */ ({})
     const tables = /** @type {any} */ (this.tables)

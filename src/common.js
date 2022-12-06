@@ -4,6 +4,11 @@ import * as encoding from 'lib0/encoding' // eslint-disable-line
 import * as promise from 'lib0/promise'
 
 /**
+ * @template {Object | undefined} T
+ * @typedef {T & {}} Defined
+ */
+
+/**
  * @typedef {string|number|bigint|boolean|_IAnyArray|Uint8Array|{[key: string]: IAny}|null|undefined} IAny
  */
 
@@ -133,7 +138,7 @@ export class StringKey {
  * @typedef {Object} ITableDef
  * @property {KEY} ITableDef.key
  * @property {VALUE} ITableDef.value
- * @property {{[key: string]: ITableIndex<InstanceType<KEY>,InstanceType<VALUE>,any>}} ITableDef.indexes
+ * @property {{[key: string]: ITableIndex<InstanceType<KEY>,InstanceType<VALUE>,any>}} [ITableDef.indexes]
  */
 
 /**
@@ -344,7 +349,7 @@ export class ITransaction {
    */
   constructor (_db) {
     /**
-     * @type {{ [Tablename in keyof DEF]: ITable<InstanceType<DEF[Tablename]["key"]>,InstanceType<DEF[Tablename]["value"]>,DEF[Tablename]["indexes"],undefined> }}
+     * @type {{ [Tablename in keyof DEF]: ITable<InstanceType<DEF[Tablename]["key"]>,InstanceType<DEF[Tablename]["value"]>,Defined<DEF[Tablename]["indexes"]>,undefined> }}
      */
     this.tables = /** @type {any} */ ({})
   }
@@ -361,7 +366,7 @@ export class ITransactionReadonly {
    */
   constructor (_db) {
     /**
-     * @type {{ [Tablename in keyof DEF]:ITableReadonly<InstanceType<DEF[Tablename]["key"]>,InstanceType<DEF[Tablename]["value"]>,DEF[Tablename]["indexes"],undefined> }}
+     * @type {{ [Tablename in keyof DEF]:ITableReadonly<InstanceType<DEF[Tablename]["key"]>,InstanceType<DEF[Tablename]["value"]>,Defined<DEF[Tablename]["indexes"]>,undefined> }}
      */
     this.tables = /** @type {any} */ ({})
   }
