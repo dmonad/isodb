@@ -1,4 +1,3 @@
-
 import * as common from './common.js'
 import * as idb from 'lib0/indexeddb'
 import * as object from 'lib0/object'
@@ -11,7 +10,7 @@ export const name = 'isodb-indexeddb'
 export * from './common.js'
 
 /**
- * @param {common.IValue} value
+ * @param {common.IEncodable} value
  * @return {Uint8Array}
  */
 const encodeValue = value => {
@@ -21,15 +20,15 @@ const encodeValue = value => {
 }
 
 /**
- * @param {common.IKey} key
+ * @param {common.IEncodable} key
  * @return {Uint8Array|string|number}
  */
 const encodeKey = key => {
   switch (key.constructor) {
     case common.AutoKey:
-      return /** @type {common.AutoKey} */ (key).id
+      return /** @type {common.AutoKey} */ (key).v
     case common.StringKey:
-      return /** @type {common.StringKey} */ (key).id
+      return /** @type {common.StringKey} */ (key).v
   }
   const encoder = encoding.createEncoder()
   key.encode(encoder)
@@ -37,8 +36,8 @@ const encodeKey = key => {
 }
 
 /**
- * @param {typeof common.IKey} keytype
- * @return {function(any):common.IKey | null}
+ * @param {typeof common.IEncodable} keytype
+ * @return {function(any):common.IEncodable | null}
  */
 const getKeyDecoder = (keytype) => {
   switch (keytype) {
@@ -52,7 +51,7 @@ const getKeyDecoder = (keytype) => {
 }
 
 /**
- * @template {common.IKey} KEY
+ * @template {common.IEncodable} KEY
  * @param {common.RangeOption<KEY>} range
  */
 const toNativeRange = (range) => {
@@ -71,16 +70,17 @@ const toNativeRange = (range) => {
 }
 
 /**
- * @template {common.IKey} KEY
- * @template {common.IValue} VALUE
+ * @template {common.IEncodable} KEY
+ * @template {common.IEncodable} VALUE
+ * @template {{[key: string]: common.ITableIndex<any, any, any>}} INDEX
  *
- * @implements {common.ITableReadonly<KEY,VALUE>}
+ * @implements {common.ITable<KEY,VALUE,INDEX>}
  */
-class TableReadonly {
+class Table {
   /**
    * @param {IDBObjectStore} store
-   * @param {typeof common.IKey} K
-   * @param {typeof common.IValue} V
+   * @param {typeof common.IEncodable} K
+   * @param {typeof common.IEncodable} V
    */
   constructor (store, K, V) {
     this.store = store
@@ -88,6 +88,10 @@ class TableReadonly {
     this.V = V
     // decode key
     this._dK = getKeyDecoder(K)
+    /**
+     * @type {{ [Indexname in keyof INDEX]: common.IndexedTable<KEY, VALUE, InstanceType<INDEX[Indexname]["key"]>, {}> }}
+     */
+    this.indexes = /** @type {any} */ ({})
   }
 
   /**
@@ -101,7 +105,7 @@ class TableReadonly {
 
   /**
    * @param {common.RangeOption<KEY>} range
-   * @param {function(common.ICursor<KEY,VALUE>):void} f
+   * @param {function(common.ICursor<KEY,VALUE>):void|Promise<void>} f
    * @return {Promise<void>}
    */
   async iterate (range, f) {
@@ -111,8 +115,8 @@ class TableReadonly {
       stopped = true
     }
     const lrange = toNativeRange(range)
-    await idb.iterate(this.store, lrange, (value, key) => {
-      f({ stop, value: /** @type {VALUE} */ (this.V.decode(decoding.createDecoder(value))), key: /** @type {KEY} */ (this._dK(key)) })
+    await idb.iterate(this.store, lrange, async (value, key) => {
+      await f({ stop, value: /** @type {VALUE} */ (this.V.decode(decoding.createDecoder(value))), key: /** @type {KEY} */ (this._dK(key)) })
       if (stopped || (range.limit != null && ++cnt >= range.limit)) {
         return false
       }
@@ -151,26 +155,23 @@ class TableReadonly {
       /** @type {KEY} */ (this._dK(key))
     )
   }
-}
 
-/**
- * @template {common.IKey} KEY
- * @template {common.IValue} VALUE
- *
- * @extends TableReadonly<KEY,VALUE>
- * @implements {common.ITable<KEY,VALUE>}
- */
-class Table extends TableReadonly {
   /**
    * @param {KEY} key
    * @param {VALUE} value
    */
   set (key, value) {
     idb.put(this.store, encodeValue(value), encodeKey(key))
+    for (const indexname in this.indexes) {
+      const indexTable = this.indexes[indexname]
+      indexTable.t.set(indexTable.indexDef.mapper(key, value), key)
+    }
   }
 
   /**
    * Only works with AutoKey
+   * @todo make sure all puts are finished before running the next get or write request
+   * This might already be handled everywhere but here.
    *
    * @param {VALUE} value
    * @return {Promise<KEY>}
@@ -179,12 +180,17 @@ class Table extends TableReadonly {
     if (this.K !== common.AutoKey) {
       throw error.create('Expected key to be an AutoKey')
     }
-    return idb.put(this.store, encodeValue(value)).then(k => /** @type {any} */ (new this.K(k)))
+    const key = await idb.put(this.store, encodeValue(value)).then(k => /** @type {any} */ (new this.K(k)))
+    for (const indexname in this.indexes) {
+      const indexTable = this.indexes[indexname]
+      indexTable.t.set(indexTable.indexDef.mapper(key, value), key)
+    }
+    return key
   }
 }
 
 /**
- * @template {{[key: string]: common.ITableDef}} DEF
+ * @template {common.IDbDef} DEF
  * @implements common.ITransaction<DEF>
  */
 class Transaction {
@@ -195,21 +201,30 @@ class Transaction {
   constructor (db, readonly = false) {
     this.db = db
     const dbKeys = object.keys(db.def)
+    object.forEach(db.def, (d, dname) => object.keys(d.indexes).forEach(indexname => dbKeys.push(dname + '#' + indexname)))
     const stores = idb.transact(db.db, dbKeys, readonly ? 'readonly' : 'readwrite')
     /**
-     * @type {{ [Tablename in keyof DEF]: common.ITable<InstanceType<DEF[Tablename]["key"]>, InstanceType<DEF[Tablename]["value"]>> }}
+     * @type {{ [Tablename in keyof DEF]: common.ITable<InstanceType<DEF[Tablename]["key"]>, InstanceType<DEF[Tablename]["value"]>, DEF[Tablename]["indexes"]> }}
      */
     this.tables = /** @type {any} */ ({})
     const tables = /** @type {any} */ (this.tables)
-    dbKeys.forEach((key, i) => {
+    let storeIndex = 0
+    for (const key in db.def) {
       const d = db.def[key]
-      tables[key] = new Table(stores[i], d.key, d.value)
-    })
+      const table = new Table(stores[storeIndex++], d.key, d.value)
+      tables[key] = table
+      for (const indexname in d.indexes) {
+        const idxDef = d.indexes[indexname]
+        const t = new Table(stores[storeIndex++], idxDef.key, d.key)
+        const idxTable = new common.IndexedTable(t, table, idxDef)
+        table.indexes[indexname] = idxTable
+      }
+    }
   }
 }
 
 /**
- * @template {{[key: string]: common.ITableDef}} DEF
+ * @template {common.IDbDef} DEF
  * @implements common.ITransactionReadonly<DEF>
  * @extends Transaction<DEF>
  */
@@ -278,8 +293,14 @@ export const openDB = (name, def) =>
   idb.openDB(name, db => {
     const stores = []
     for (const key in def) {
-      const autoIncrement = def[key].key === /** @type {any} */ (common.AutoKey)
+      const d = def[key]
+      const autoIncrement = d.key === /** @type {any} */ (common.AutoKey)
       stores.push([key, { autoIncrement }])
+      for (const indexname in d.indexes) {
+        const idxDef = d.indexes[indexname]
+        const autoIncrement = idxDef.key === /** @type {any} */ (common.AutoKey)
+        stores.push([key + '#' + indexname, { autoIncrement }])
+      }
     }
     idb.createStores(db, stores)
   }).then(db => new DB(db, def))

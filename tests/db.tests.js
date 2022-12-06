@@ -24,7 +24,7 @@ export const testIterator = async tc => {
   for (const iso of isoImpls) {
     await t.groupAsync(iso.name, async () => {
       await iso.deleteDB(getDbName(tc.testName))
-      const def = { strings: { key: iso.StringKey, value: iso.AnyValue }, auto: { key: iso.AutoKey, value: iso.AnyValue } }
+      const def = { strings: { key: iso.StringKey, value: iso.AnyValue, indexes: {} }, auto: { key: iso.AutoKey, value: iso.AnyValue, indexes: {} } }
       const db = await iso.openDB(getDbName(tc.testName), def)
       db.transact(tr => {
         for (let i = 1; i < 30; i++) {
@@ -42,9 +42,9 @@ export const testIterator = async tc => {
         await tr.tables.auto.iterate({}, (cursor) => {
           const k = cursor.key
           const v = cursor.value
-          t.compare({ i: k.id }, v.v)
-          read.push(k.id)
-          if (k.id === 27) {
+          t.compare({ i: k.v }, v.v)
+          read.push(k.v)
+          if (k.v === 27) {
             cursor.stop()
           }
         })
@@ -58,8 +58,8 @@ export const testIterator = async tc => {
         await tr.tables.auto.iterate({ start: new iso.AutoKey(2) }, (cursor) => {
           const k = cursor.key
           const v = cursor.value
-          t.compare({ i: k.id }, v.v)
-          read.push(k.id)
+          t.compare({ i: k.v }, v.v)
+          read.push(k.v)
         })
         t.assert(read.length === 28 && read.every((v, index) => v === index + 2))
       })
@@ -71,8 +71,8 @@ export const testIterator = async tc => {
         await tr.tables.auto.iterate({ start: new iso.AutoKey(2), end: new iso.AutoKey(3) }, (cursor) => {
           const k = cursor.key
           const v = cursor.value
-          t.compare({ i: k.id }, v.v)
-          read.push(k.id)
+          t.compare({ i: k.v }, v.v)
+          read.push(k.v)
         })
         t.assert(read.length === 2 && read.every((v, index) => v === index + 2))
       })
@@ -84,8 +84,8 @@ export const testIterator = async tc => {
         await tr.tables.auto.iterate({ start: new iso.AutoKey(2), end: new iso.AutoKey(3), startExclusive: true }, (cursor) => {
           const k = cursor.key
           const v = cursor.value
-          t.compare({ i: k.id }, v.v)
-          read.push(k.id)
+          t.compare({ i: k.v }, v.v)
+          read.push(k.v)
         })
         t.assert(read.length === 1 && read.every((v, index) => v === index + 3))
       })
@@ -97,8 +97,8 @@ export const testIterator = async tc => {
         await tr.tables.auto.iterate({ start: new iso.AutoKey(2), end: new iso.AutoKey(3), endExclusive: true }, (cursor) => {
           const k = cursor.key
           const v = cursor.value
-          t.compare({ i: k.id }, v.v)
-          read.push(k.id)
+          t.compare({ i: k.v }, v.v)
+          read.push(k.v)
         })
         t.assert(read.length === 1 && read.every((v, index) => v === index + 2))
       })
@@ -110,8 +110,8 @@ export const testIterator = async tc => {
         await tr.tables.auto.iterate({ start: new iso.AutoKey(2), startExclusive: true }, (cursor) => {
           const k = cursor.key
           const v = cursor.value
-          t.compare({ i: k.id }, v.v)
-          read.push(k.id)
+          t.compare({ i: k.v }, v.v)
+          read.push(k.v)
         })
         t.assert(read.length === 27 && read.every((v, index) => v === index + 3))
       })
@@ -123,8 +123,8 @@ export const testIterator = async tc => {
         await tr.tables.auto.iterate({ end: new iso.AutoKey(3), endExclusive: true }, (cursor) => {
           const k = cursor.key
           const v = cursor.value
-          t.compare({ i: k.id }, v.v)
-          read.push(k.id)
+          t.compare({ i: k.v }, v.v)
+          read.push(k.v)
         })
         t.assert(read.length === 2 && read.every((v, index) => v === index + 1))
       })
@@ -136,8 +136,8 @@ export const testIterator = async tc => {
         await tr.tables.auto.iterate({ start: new iso.AutoKey(2) }, (cursor) => {
           const k = cursor.key
           const v = cursor.value
-          t.compare({ i: k.id }, v.v)
-          read.push(k.id)
+          t.compare({ i: k.v }, v.v)
+          read.push(k.v)
         })
         t.assert(read.length === 28 && read.every((v, index) => v === index + 2))
       })
@@ -149,8 +149,8 @@ export const testIterator = async tc => {
         await tr.tables.auto.iterate({ end: new iso.AutoKey(3) }, (cursor) => {
           const k = cursor.key
           const v = cursor.value
-          t.compare({ i: k.id }, v.v)
-          read.push(k.id)
+          t.compare({ i: k.v }, v.v)
+          read.push(k.v)
         })
         t.assert(read.length === 3 && read.every((v, index) => v === index + 1))
       })
@@ -163,8 +163,8 @@ export const testIterator = async tc => {
         await tr.tables.strings.iterate({ start: new iso.StringKey('1'), end: new iso.StringKey('3') }, (cursor) => {
           const k = cursor.key
           const v = cursor.value
-          t.compare(k.id, v.v)
-          read.push(k.id)
+          t.compare(k.v, v.v)
+          read.push(k.v)
         })
         t.assert(read.length === 3 && read.every((v, index) => v === '' + (index + 1)))
       })
@@ -176,8 +176,8 @@ export const testIterator = async tc => {
         await tr.tables.strings.iterate({ start: new iso.StringKey('1'), end: new iso.StringKey('3'), startExclusive: true, endExclusive: true }, (cursor) => {
           const k = cursor.key
           const v = cursor.value
-          t.compare(k.id, v.v)
-          read.push(k.id)
+          t.compare(k.v, v.v)
+          read.push(k.v)
         })
         t.assert(read.length === 1 && read.every((v, index) => v === '' + (index + 2)))
       })
@@ -190,8 +190,8 @@ export const testIterator = async tc => {
         await tr.tables.strings.iterate({ start: new iso.StringKey('1'), startExclusive: true, limit: 5 }, (cursor) => {
           const k = cursor.key
           const v = cursor.value
-          t.compare(k.id, v.v)
-          read.push(k.id)
+          t.compare(k.v, v.v)
+          read.push(k.v)
         })
         t.assert(read.length === 5 && read.every((v, index) => v === '' + (index + 2)))
       })
@@ -206,7 +206,7 @@ export const testTransactionsAreExecutedOneAfterAnother = async tc => {
   for (const iso of isoImpls) {
     await t.groupAsync(iso.name, async () => {
       await iso.deleteDB(getDbName(tc.testName))
-      const def = { abc: { key: iso.StringKey, value: iso.AnyValue }, xyz: { key: iso.AutoKey, value: iso.AnyValue } }
+      const def = { abc: { key: iso.StringKey, value: iso.AnyValue, indexes: {} }, xyz: { key: iso.AutoKey, value: iso.AnyValue, indexes: {} } }
       const db = await iso.openDB(getDbName(tc.testName), def)
       /**
        * @type {Array<string>}
@@ -254,7 +254,7 @@ export const testBasics = async tc => {
   for (const iso of isoImpls) {
     await t.groupAsync(iso.name, async () => {
       await iso.deleteDB(getDbName(tc.testName))
-      const def = { abc: { key: iso.StringKey, value: iso.AnyValue }, xyz: { key: iso.AutoKey, value: iso.AnyValue } }
+      const def = { abc: { key: iso.StringKey, value: iso.AnyValue, indexes: {} }, xyz: { key: iso.AutoKey, value: iso.AnyValue, indexes: {} } }
       const db = await iso.openDB(getDbName(tc.testName), def)
       await db.transact(async tr => {
         const testValue = new iso.AnyValue({ test: 'someVal' })
@@ -278,7 +278,7 @@ export const testRetrieval = async tc => {
   for (const iso of isoImpls) {
     await t.groupAsync(iso.name, async () => {
       await iso.deleteDB(getDbName(tc.testName))
-      const def = { auto: { key: iso.AutoKey, value: iso.AnyValue } }
+      const def = { auto: { key: iso.AutoKey, value: iso.AnyValue, indexes: {} } }
       const db = await iso.openDB(getDbName(tc.testName), def)
       await db.transact(async tr => {
         for (let i = 1; i <= 10; i++) {
@@ -286,9 +286,9 @@ export const testRetrieval = async tc => {
         }
         // Keys
         const limitNorangeKeys = await tr.tables.auto.getKeys({ limit: 3 })
-        t.assert(limitNorangeKeys.length === 3 && limitNorangeKeys[0].id === 1)
+        t.assert(limitNorangeKeys.length === 3 && limitNorangeKeys[0].v === 1)
         const limitRangedKeys = await tr.tables.auto.getKeys({ limit: 3, start: new iso.AutoKey(3) })
-        t.assert(limitRangedKeys.length === 3 && limitRangedKeys[0].id === 3)
+        t.assert(limitRangedKeys.length === 3 && limitRangedKeys[0].v === 3)
         // Vals
         const limitNorangeVals = await tr.tables.auto.getValues({ limit: 3 })
         t.assert(limitNorangeVals.length === 3 && limitNorangeVals[0].v === 1)
@@ -296,9 +296,9 @@ export const testRetrieval = async tc => {
         t.assert(limitRangedVals.length === 3 && limitRangedVals[0].v === 3)
         // Entries
         const limitNorangeEntries = await tr.tables.auto.getEntries({ limit: 3 })
-        t.assert(limitNorangeEntries.length === 3 && limitNorangeEntries[0].key.id === 1)
+        t.assert(limitNorangeEntries.length === 3 && limitNorangeEntries[0].key.v === 1)
         const limitRangedEntries = await tr.tables.auto.getEntries({ limit: 3, start: new iso.AutoKey(3) })
-        t.assert(limitRangedEntries.length === 3 && limitRangedEntries[0].key.id === 3)
+        t.assert(limitRangedEntries.length === 3 && limitRangedEntries[0].key.v === 3)
       })
     })
   }
@@ -312,7 +312,7 @@ export const testBenchmark = async tc => {
     await t.groupAsync(iso.name, async () => {
       await iso.deleteDB(getDbName(tc.testName))
       const n = 2000
-      const def = { abc: { key: iso.StringKey, value: iso.AnyValue }, auto: { key: iso.AutoKey, value: iso.AnyValue } }
+      const def = { abc: { key: iso.StringKey, value: iso.AnyValue, indexes: {} }, auto: { key: iso.AutoKey, value: iso.AnyValue, indexes: {} } }
       await t.measureTimeAsync(`${iso.name}: Time to insert ${n} elements`, async () => {
         const db = await iso.openDB(getDbName(tc.testName), def)
         await db.transact(async tr => {
@@ -396,7 +396,7 @@ export const testBenchmark = async tc => {
           const autoTable = tr.tables.auto
           let retrieved = 0
           await autoTable.iterate({}, cursor => {
-            t.compare(cursor.value.v, { test: 'someVal' + (cursor.key.id - 1) })
+            t.compare(cursor.value.v, { test: 'someVal' + (cursor.key.v - 1) })
             retrieved++
           })
           t.assert(retrieved === n)
@@ -422,6 +422,55 @@ export const testBenchmark = async tc => {
           const values = await tr.tables.auto.getValues({})
           t.assert(values.length === n)
         })
+      })
+    })
+  }
+}
+
+/**
+ * @param {t.TestCase} tc
+ */
+export const testIndexing = async tc => {
+  const n = 9
+  for (const iso of isoImpls) {
+    await iso.deleteDB(getDbName(tc.testName))
+    const db = await iso.openDB(getDbName(tc.testName), {
+      auto: {
+        key: iso.AutoKey,
+        value: iso.AnyValue,
+        indexes: {
+          stringified: {
+            key: iso.StringKey,
+            mapper: (k, _v) => new iso.StringKey(k.v + '')
+          }
+        }
+      }
+    })
+    await t.measureTimeAsync(`${iso.name}: 'Init ${n} elements`, async () => {
+      await db.transact(async tr => {
+        const autoTable = tr.tables.auto
+        for (let i = 0; i < n; i++) {
+          const testValue = new iso.AnyValue({ test: 'someVal' + i })
+          autoTable.add(testValue)
+        }
+      })
+    })
+    await t.groupAsync(`${iso.name}: Using stringified index`, async () => {
+      await db.transactReadonly(async tr => {
+        const keys = await tr.tables.auto.indexes.stringified.getKeys({})
+        t.assert(keys.length === n && keys.every((key, index) => key.v === ('' + (index + 1))))
+        const values = await tr.tables.auto.indexes.stringified.getValues({})
+        t.assert(values.length === n)
+        values.forEach((value, index) => {
+          t.compare(value.v, { test: 'someVal' + index })
+        })
+        {
+          let index = 0
+          await tr.tables.auto.indexes.stringified.iterate({ limit: 5 }, async cursor => {
+            t.compare(cursor.value.v, { test: 'someVal' + index++ })
+          })
+          t.assert(index === 5)
+        }
       })
     })
   }

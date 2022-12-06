@@ -1,8 +1,9 @@
 import * as common from './common.js'
 import * as encoding from 'lib0/encoding'
 import * as decoding from 'lib0/decoding'
-import * as promise from 'lib0/promise'
 import * as error from 'lib0/error'
+import * as math from 'lib0/math'
+import * as object from 'lib0/object'
 import lmdb from 'lmdb'
 import fs from 'node:fs/promises'
 import path from 'node:path'
@@ -12,7 +13,7 @@ export * from './common.js'
 export const name = 'isodb-lmdb'
 
 /**
- * @param {typeof common.IKey} keytype
+ * @param {typeof common.IEncodable} keytype
  * @return {'binary'|'uint32'|'ordered-binary'}
  */
 const getLmdbKeyType = keytype => {
@@ -27,7 +28,7 @@ const getLmdbKeyType = keytype => {
 }
 
 /**
- * @template {common.IKey} KEY
+ * @template {common.IEncodable} KEY
  * @param {common.RangeOption<KEY>} range
  */
 const toNativeRange = range => {
@@ -51,7 +52,7 @@ const toNativeRange = range => {
 }
 
 /**
- * @param {common.IValue} value
+ * @param {common.IEncodable} value
  */
 const encodeValue = value => {
   const encoder = encoding.createEncoder()
@@ -60,16 +61,16 @@ const encodeValue = value => {
 }
 
 /**
- * @param {common.IKey} key
+ * @param {common.IEncodable} key
  * @param {boolean} increment
  * @return {Uint8Array|string|number}
  */
 const encodeKey = (key, increment) => {
   switch (key.constructor) {
     case common.AutoKey:
-      return /** @type {common.AutoKey} */ (key).id + (increment ? 1 : 0)
+      return /** @type {common.AutoKey} */ (key).v + (increment ? 1 : 0)
     case common.StringKey:
-      return /** @type {common.StringKey} */ (key).id + (increment ? ' ' : '')
+      return /** @type {common.StringKey} */ (key).v + (increment ? ' ' : '')
   }
   const encoder = encoding.createEncoder()
   key.encode(encoder)
@@ -80,8 +81,8 @@ const encodeKey = (key, increment) => {
 }
 
 /**
- * @param {typeof common.IKey} keytype
- * @return {function(any):common.IKey | null}
+ * @param {typeof common.IEncodable} keytype
+ * @return {function(any):common.IEncodable| null}
  */
 const getKeyDecoder = (keytype) => {
   switch (keytype) {
@@ -95,15 +96,17 @@ const getKeyDecoder = (keytype) => {
 }
 
 /**
- * @template {common.IKey} KEY
- * @template {common.IValue} VALUE
- * @implements common.ITable<KEY, VALUE>
+ * @template {common.IEncodable} KEY
+ * @template {common.IEncodable} VALUE
+ * @template {{[key: string]: common.ITableIndex<any, any, any>}} INDEX
+ *
+ * @implements common.ITable<KEY, VALUE, INDEX>
  */
 class Table {
   /**
    * @param {lmdb.Database} t
-   * @param {typeof common.IKey} keytype
-   * @param {typeof common.IValue} valuetype
+   * @param {typeof common.IEncodable} keytype
+   * @param {typeof common.IEncodable} valuetype
    */
   constructor (t, keytype, valuetype) {
     this.t = t
@@ -111,6 +114,10 @@ class Table {
     this.V = valuetype
     // decode key
     this._dK = getKeyDecoder(keytype)
+    /**
+     * @type {{ [Indexname in keyof INDEX]: common.IndexedTable<KEY, VALUE, InstanceType<INDEX[Indexname]["key"]>, {}> }}
+     */
+    this.indexes = /** @type {any} */ ({})
   }
 
   /**
@@ -157,22 +164,21 @@ class Table {
 
   /**
    * @param {common.RangeOption<KEY>} range
-   * @param {function(common.ICursor<KEY,VALUE>):void} f
+   * @param {function(common.ICursor<KEY,VALUE>):void|Promise<void>} f
    * @return {Promise<void>}
    */
-  iterate (range, f) {
+  async iterate (range, f) {
     let cnt = 0
     let stopped = false
     const stop = () => {
       stopped = true
     }
     for (const { key, value } of this.t.getRange(toNativeRange(range))) {
-      f({ stop, key: /** @type {KEY} */ (this._dK(key)), value: /** @type {VALUE} */ (this.V.decode(decoding.createDecoder(value))) })
+      await f({ stop, key: /** @type {KEY} */ (this._dK(key)), value: /** @type {VALUE} */ (this.V.decode(decoding.createDecoder(value))) })
       if (stopped || (range.limit != null && ++cnt >= range.limit)) {
         break
       }
     }
-    return promise.resolve()
   }
 
   /**
@@ -181,6 +187,10 @@ class Table {
    */
   set (key, value) {
     this.t.put(encodeKey(key, false), encodeValue(value))
+    for (const indexname in this.indexes) {
+      const indexTable = this.indexes[indexname]
+      indexTable.t.set(indexTable.indexDef.mapper(indexname, value), key)
+    }
   }
 
   /**
@@ -194,14 +204,21 @@ class Table {
       throw error.create('Expected key to be an AutoKey')
     }
     const [lastKey] = this.t.getKeys({ reverse: true, limit: 1 }).asArray
-    const key = lastKey == null ? 1 : /** @type {number} */ (lastKey) + 1
-    await this.t.put(key, encodeValue(value))
-    return /** @type {any} */ (new common.AutoKey(key))
+    /**
+     * @type {KEY}
+     */
+    const key = /** @type {any} */ (new common.AutoKey(lastKey == null ? 1 : /** @type {number} */ (lastKey) + 1))
+    this.t.put(key.v, encodeValue(value))
+    for (const indexname in this.indexes) {
+      const indexTable = this.indexes[indexname]
+      indexTable.t.set(indexTable.indexDef.mapper(key, value), key)
+    }
+    return key
   }
 }
 
 /**
- * @template {{[key: string]: common.ITableDef}} DEF
+ * @template {common.IDbDef} DEF
  * @implements common.ITransaction<DEF>
  */
 class Transaction {
@@ -227,18 +244,29 @@ class DB {
     this.def = def
     this.env = env
     /**
-     * @type {{ [Tablename in keyof DEF]: Table<InstanceType<DEF[Tablename]["key"]>, InstanceType<DEF[Tablename]["value"]>> }}
+     * @type {{ [Tablename in keyof DEF]: Table<InstanceType<DEF[Tablename]["key"]>, InstanceType<DEF[Tablename]["value"]>, DEF[Tablename]["indexes"]> }}
      */
     this.tables = /** @type {any} */ ({})
     for (const dbname in def) {
       const d = def[dbname]
-      const keyEncoding = getLmdbKeyType(d.key)
       const conf = {
         name: dbname,
         encoding: /** @type {'binary'} */ ('binary'),
-        keyEncoding
+        keyEncoding: getLmdbKeyType(d.key)
       }
-      this.tables[dbname] = new Table(env.openDB(conf), /** @type {typeof common.IKey} */ (d.key), /** @type {typeof common.IValue} */ (d.value))
+      const table = new Table(env.openDB(conf), d.key, d.value)
+      this.tables[dbname] = /** @type {any} */ (table)
+      for (const indexname in d.indexes) {
+        const idxDef = d.indexes[indexname]
+        const conf = {
+          name: dbname + '#' + indexname,
+          encoding: /** @type {'binary'} */ ('binary'),
+          keyEncoding: getLmdbKeyType(idxDef.key)
+        }
+        const t = new Table(env.openDB(conf), idxDef.key, d.key)
+        const idxTable = new common.IndexedTable(t, table, idxDef)
+        table.indexes[indexname] = idxTable
+      }
     }
   }
 
@@ -286,9 +314,10 @@ class DB {
  */
 export const openDB = async (location, def) => {
   await fs.mkdir(path.dirname(location), { recursive: true })
+  const maxDbs = object.map(def, d => object.length(d.indexes) + 1).reduce(math.add, 0)
   const env = lmdb.open({
     path: location,
-    maxDbs: Object.keys(def).length,
+    maxDbs,
     cache: true
     // compression: true // @todo add an option to enable compression when available
   })
