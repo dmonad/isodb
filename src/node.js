@@ -122,11 +122,11 @@ class Table {
 
   /**
    * @param {KEY} key
-   * @return {Promise<VALUE>}
+   * @return {Promise<VALUE|null>}
    */
   async get (key) {
     const buf = this.t.getBinaryFast(encodeKey(key, false))
-    return buf ? /** @type {any} */ (this.V.decode(decoding.createDecoder(buf))) : undefined
+    return buf == null ? null : /** @type {VALUE} */ (this.V.decode(decoding.createDecoder(buf)))
   }
 
   /**
@@ -196,7 +196,7 @@ class Table {
     this.t.put(encodeKey(key, false), encodeValue(value))
     for (const indexname in this.indexes) {
       const indexTable = this.indexes[indexname]
-      indexTable.t.set(indexTable.indexDef.mapper(indexname, value), key)
+      indexTable.t.set(indexTable.indexDef.mapper(key, value), key)
     }
   }
 
@@ -221,6 +221,22 @@ class Table {
       indexTable.t.set(indexTable.indexDef.mapper(key, value), key)
     }
     return key
+  }
+
+  /**
+   * @param {KEY} key
+   */
+  remove (key) {
+    const encodedKey = encodeKey(key, false)
+    if (!object.isEmpty(this.indexes)) {
+      const buf = this.t.getBinaryFast(encodedKey)
+      const value = buf ? /** @type {VALUE} */ (this.V.decode(decoding.createDecoder(buf))) : null
+      for (const indexname in this.indexes) {
+        const indexTable = this.indexes[indexname]
+        indexTable.t.remove(indexTable.indexDef.mapper(key, value))
+      }
+    }
+    this.t.remove(encodedKey)
   }
 }
 

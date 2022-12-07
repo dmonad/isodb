@@ -182,7 +182,7 @@ export class ITableReadonly {
 
   /**
    * @param {KEY} _key
-   * @return {Promise<VALUE>}
+   * @return {Promise<VALUE|null>}
    */
   get (_key) {
     error.methodUnimplemented()
@@ -249,6 +249,13 @@ export class ITable extends ITableReadonly {
   add (_value) {
     error.methodUnimplemented()
   }
+
+  /**
+   * @param {KEY} _key
+   */
+  remove (_key) {
+    error.methodUnimplemented()
+  }
 }
 
 /**
@@ -280,11 +287,11 @@ export class IndexedTable {
 
   /**
    * @param {MKEY} mkey
-   * @return {Promise<VALUE>}
+   * @return {Promise<VALUE|null>}
    */
   async get (mkey) {
     const key = await this.t.get(mkey)
-    return this.source.get(key)
+    return key && this.source.get(key)
   }
 
   /**
@@ -293,7 +300,7 @@ export class IndexedTable {
    */
   async getEntries (range) {
     const entries = await this.t.getEntries(range)
-    const vals = await promise.all(entries.map(entry => this.source.get(entry.value)))
+    const vals = await promise.all(entries.map(entry => /** @type {Promise<VALUE>} */ (this.source.get(entry.value))))
     return entries.map((entry, i) => ({ key: entry.key, value: vals[i], fkey: entry.value }))
   }
 
@@ -303,7 +310,7 @@ export class IndexedTable {
    */
   async getValues (range) {
     const values = await this.t.getValues(range)
-    return await promise.all(values.map(value => this.source.get(value)))
+    return await promise.all(values.map(value => /** @type {Promise<VALUE>} */ (this.source.get(value))))
   }
 
   /**
@@ -321,7 +328,7 @@ export class IndexedTable {
    */
   iterate (range, f) {
     return this.t.iterate(range, async cursor => {
-      const value = await this.source.get(cursor.value)
+      const value = /** @type {VALUE} */ (await this.source.get(cursor.value))
       f({
         key: cursor.key,
         value,

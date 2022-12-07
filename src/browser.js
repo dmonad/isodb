@@ -100,7 +100,24 @@ class Table {
    */
   async get (key) {
     const v = /** @type {Uint8Array} */ (await idb.get(this.store, encodeKey(key)))
-    return /** @type {any} */ (this.V.decode(decoding.createDecoder(v)))
+    return v == null ? null : /** @type {any} */ (this.V.decode(decoding.createDecoder(v)))
+  }
+
+  /**
+   * @param {KEY} key
+   */
+  remove (key) {
+    const encodedKey = encodeKey(key)
+    if (!object.isEmpty(this.indexes)) {
+      idb.get(this.store, encodedKey).then(v => {
+        const value = v == null ? null : this.V.decode(decoding.createDecoder(/** @type {Uint8Array} */ (v)))
+        for (const indexname in this.indexes) {
+          const indexTable = this.indexes[indexname]
+          indexTable.t.remove(indexTable.indexDef.mapper(key, value))
+        }
+      })
+    }
+    idb.del(this.store, encodeKey(key))
   }
 
   /**

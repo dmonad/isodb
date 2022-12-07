@@ -220,12 +220,12 @@ export const testTransactionsAreExecutedOneAfterAnother = async tc => {
         logs.push('x1')
         const vv = await abcTable.get(new iso.StringKey('test'))
         logs.push('x2')
-        t.compare(vv.v, testValue.v)
+        t.compare(vv && vv.v, testValue.v)
         const key = await xyzTable.add(new iso.AnyValue({ test: 'someVal' }))
         logs.push('x3')
         const v = await xyzTable.get(key)
         logs.push('x4')
-        t.compare(v.v, { test: 'someVal' }, 'checked someval')
+        t.compare(v && v.v, { test: 'someVal' }, 'checked someval')
       })
       const t2 = db.transact(async tr => {
         const testValue = new iso.AnyValue({ test: 'someVal' })
@@ -234,12 +234,12 @@ export const testTransactionsAreExecutedOneAfterAnother = async tc => {
         abcTable.set(new iso.StringKey('test'), testValue)
         const vv = await abcTable.get(new iso.StringKey('test'))
         logs.push('y2')
-        t.compare(vv.v, testValue.v)
+        t.compare(vv && vv.v, testValue.v)
         const key = await xyzTable.add(new iso.AnyValue({ test: 'someVal' }))
         logs.push('y3')
         const v = await xyzTable.get(key)
         logs.push('y4')
-        t.compare(v.v, { test: 'someVal' }, 'checked someval')
+        t.compare(v && v.v, { test: 'someVal' }, 'checked someval')
       })
       await Promise.all([t1, t2])
       t.compareArrays(logs, ['x1', 'x2', 'x3', 'x4', 'y2', 'y3', 'y4'])
@@ -262,10 +262,10 @@ export const testBasics = async tc => {
         const xyzTable = tr.tables.xyz
         abcTable.set(new iso.StringKey('test'), testValue)
         const vv = await abcTable.get(new iso.StringKey('test'))
-        t.compare(vv.v, testValue.v)
+        t.compare(vv && vv.v, testValue.v)
         const key = await xyzTable.add(new iso.AnyValue({ test: 'someVal' }))
         const v = await xyzTable.get(key)
-        t.compare(v.v, { test: 'someVal' }, 'checked someval')
+        t.compare(v && v.v, { test: 'someVal' }, 'checked someval')
       })
     })
   }
@@ -329,7 +329,7 @@ export const testBenchmark = async tc => {
           const abcTable = tr.tables.abc
           for (let i = 0; i < n; i++) {
             const v = await abcTable.get(new iso.StringKey('key' + i))
-            t.compare(v.v, { test: 'someVal' + i })
+            t.compare(v && v.v, { test: 'someVal' + i })
           }
         })
       })
@@ -386,7 +386,7 @@ export const testBenchmark = async tc => {
           const autoTable = tr.tables.auto
           for (let i = 0; i < keys.length; i++) {
             const v = await autoTable.get(keys[i])
-            t.compare(v.v, { test: 'someVal' + i })
+            t.compare(v && v.v, { test: 'someVal' + i })
           }
         })
       })
@@ -484,6 +484,20 @@ export const testIndexing = async tc => {
             index++
           })
           t.assert(index === 5)
+        })
+      })
+      await db.transact(async tr => {
+        await t.groupAsync('removing entries', async () => {
+          let index = 1
+          const dkey = new iso.AutoKey(1)
+          tr.tables.auto.remove(dkey)
+          t.assert((await tr.tables.auto.get(dkey)) === null)
+          await tr.tables.auto.indexes.stringified.iterate({ limit: 5 }, async cursor => {
+            t.compare(cursor.value.v, { test: 'someVal' + index })
+            t.compare(cursor.fkey.v, index + 1)
+            index++
+          })
+          t.assert(index === 6)
         })
       })
     })
