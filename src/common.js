@@ -13,16 +13,10 @@ import * as promise from 'lib0/promise'
  */
 
 /**
+ * @interface
  * @typedef {IAny[]} _IAnyArray
  */
 export class IEncodable {
-  /**
-   * @param {any} v
-   */
-  constructor (v) {
-    this.v = v
-  }
-
   /**
    * @param {encoding.Encoder} _encoder
    */
@@ -399,20 +393,3 @@ export class IDB {
   destroy () {
   }
 }
-
-/**
- * @template {IDbDef} DEF
- *
- * @param {string} _location
- * @param {DEF} _def
- * @return {Promise<IDB<DEF>>}
- */
-export const openDB = async (_location, _def) => {
-  error.methodUnimplemented()
-}
-
-/**
- * @param {string} _path
- * @return {Promise<void>}
- */
-export const deleteDB = (_path) => error.methodUnimplemented()

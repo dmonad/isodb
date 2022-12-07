@@ -4,7 +4,7 @@
   "description": "Isomorphic NoSQL Database",
   "sideEffects": false,
   "type": "module",
-  "types": "./dist/src/common.d.ts",
+  "types": "./dist/src/interface.d.ts",
   "funding": {
     "type": "GitHub Sponsors ❤",
     "url": "https://github.com/sponsors/dmonad"

@@ -40,7 +40,7 @@ const encodeKey = key => {
  * @return {function(any):common.IEncodable | null}
  */
 const getKeyDecoder = (keytype) => {
-  switch (keytype) {
+  switch (/** @type {any} */ (keytype)) {
     case common.AutoKey:
       return id => id ? new common.AutoKey(id) : null
     case common.StringKey:
@@ -184,10 +184,14 @@ class Table {
    * @return {Promise<KEY>}
    */
   async add (value) {
-    if (this.K !== common.AutoKey) {
+    /**
+     * @type {typeof common.AutoKey}
+     */
+    const K = /** @type {any} */ (this.K)
+    if (K !== common.AutoKey) {
       throw error.create('Expected key to be an AutoKey')
     }
-    const key = await idb.put(this.store, encodeValue(value)).then(k => /** @type {any} */ (new this.K(k)))
+    const key = await idb.put(this.store, encodeValue(value)).then(k => /** @type {any} */ (new K(k)))
     for (const indexname in this.indexes) {
       const indexTable = this.indexes[indexname]
       indexTable.t.set(indexTable.indexDef.mapper(key, value), key)

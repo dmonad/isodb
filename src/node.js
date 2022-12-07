@@ -85,7 +85,7 @@ const encodeKey = (key, increment) => {
  * @return {function(any):common.IEncodable| null}
  */
 const getKeyDecoder = (keytype) => {
-  switch (keytype) {
+  switch (/** @type {any} */ (keytype)) {
     case common.AutoKey:
       return id => id == null ? null : new common.AutoKey(id)
     case common.StringKey:
@@ -212,7 +212,7 @@ class Table {
     }
     const [lastKey] = this.t.getKeys({ reverse: true, limit: 1 }).asArray
     /**
-     * @type {KEY}
+     * @type {KEY & common.AutoKey}
      */
     const key = /** @type {any} */ (new common.AutoKey(lastKey == null ? 1 : /** @type {number} */ (lastKey) + 1))
     this.t.put(key.v, encodeValue(value))
