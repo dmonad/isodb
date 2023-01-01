@@ -13,10 +13,12 @@
     "./package.json": "./package.json",
     ".": {
       "node": {
+        "module": "./src/node.js",
         "import": "./src/node.js",
         "types": "./dist/src/interface.d.ts"
       },
       "browser": {
+        "module": "./src/browser.js",
         "import": "./src/browser.js",
         "types": "./dist/src/interface.d.ts"
       }
