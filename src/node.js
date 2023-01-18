@@ -1,6 +1,7 @@
 import * as common from './common.js'
 import * as encoding from 'lib0/encoding'
 import * as decoding from 'lib0/decoding'
+import * as promise from 'lib0/promise'
 import * as error from 'lib0/error'
 import * as math from 'lib0/math'
 import * as object from 'lib0/object'
@@ -125,7 +126,7 @@ class Table {
    * @return {Promise<VALUE|null>}
    */
   async get (key) {
-    const buf = this.t.getBinaryFast(encodeKey(key, false))
+    const buf = this.t.getBinary(encodeKey(key, false)) // @todo experiment with getBinaryFast
     return buf == null ? null : /** @type {VALUE} */ (this.V.decode(decoding.createDecoder(buf)))
   }
 
@@ -135,7 +136,7 @@ class Table {
    * @return {Promise<Array<{ key: KEY, value: VALUE, fkey: undefined }>>}
    */
   getEntries (range) {
-    return Promise.resolve(this.t.getRange(toNativeRange(range)).map(entry => ({
+    return promise.resolveWith(this.t.getRange(toNativeRange(range)).map(entry => ({
       key: /** @type {KEY} */ (this._dK(entry.key)),
       value: /** @type {VALUE} */ (this.V.decode(decoding.createDecoder(entry.value))),
       fkey: undefined
@@ -148,7 +149,7 @@ class Table {
    * @return {Promise<Array<KEY>>}
    */
   getKeys (range) {
-    return Promise.resolve(this.t.getRange(toNativeRange(range)).map(entry =>
+    return promise.resolveWith(this.t.getRange(toNativeRange(range)).map(entry =>
       /** @type {KEY} */ (this._dK(entry.key))
     ).asArray)
   }
@@ -159,7 +160,7 @@ class Table {
    * @return {Promise<Array<VALUE>>}
    */
   getValues (range) {
-    return Promise.resolve(this.t.getRange(toNativeRange(range)).map(entry =>
+    return promise.resolveWith(this.t.getRange(toNativeRange(range)).map(entry =>
       /** @type {VALUE} */ (this.V.decode(decoding.createDecoder(entry.value)))
     ).asArray)
   }
@@ -229,7 +230,7 @@ class Table {
   remove (key) {
     const encodedKey = encodeKey(key, false)
     if (!object.isEmpty(this.indexes)) {
-      const buf = this.t.getBinaryFast(encodedKey)
+      const buf = this.t.getBinary(encodedKey) // @todo experiment with getBinaryFast (doesn't work because readVarUint8 doesn't copy)
       const value = buf ? /** @type {VALUE} */ (this.V.decode(decoding.createDecoder(buf))) : null
       for (const indexname in this.indexes) {
         const indexTable = this.indexes[indexname]
