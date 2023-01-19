@@ -308,10 +308,8 @@ class DB {
   }
 
   destroy () {
-    return promise.createEmpty(resolve => {
-      this.db.onclose = resolve
-      this.db.close()
-    })
+    this.db.close()
+    return promise.resolve()
   }
 }
 
