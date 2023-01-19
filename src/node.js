@@ -325,7 +325,7 @@ class DB {
   }
 
   destroy () {
-    this.env.close()
+    return this.env.close()
   }
 }
 

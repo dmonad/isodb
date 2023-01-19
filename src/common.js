@@ -397,6 +397,10 @@ export class IDB {
     error.methodUnimplemented()
   }
 
+  /**
+   * @return {Promise<void>}
+   */
   destroy () {
+    error.methodUnimplemented()
   }
 }

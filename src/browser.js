@@ -4,6 +4,7 @@ import * as object from 'lib0/object'
 import * as encoding from 'lib0/encoding'
 import * as decoding from 'lib0/decoding'
 import * as error from 'lib0/error'
+import * as promise from 'lib0/promise'
 
 export const name = 'isodb-indexeddb'
 
@@ -307,6 +308,10 @@ class DB {
   }
 
   destroy () {
+    return promise.createEmpty(resolve => {
+      this.db.onclose = resolve
+      this.db.close()
+    })
   }
 }
 
