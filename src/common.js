@@ -91,6 +91,33 @@ export class AutoKey {
 /**
  * @implements IEncodable
  */
+export class UintKey {
+  /**
+   * @param {number} v
+   */
+  constructor (v) {
+    this.v = v
+  }
+
+  /**
+   * @param {encoding.Encoder} encoder
+   */
+  encode (encoder) {
+    encoding.writeVarUint(encoder, this.v)
+  }
+
+  /**
+   * @param {decoding.Decoder} decoder
+   * @return {IEncodable}
+   */
+  static decode (decoder) {
+    return new UintKey(decoding.readUint32(decoder))
+  }
+}
+
+/**
+ * @implements IEncodable
+ */
 export class StringKey {
   /**
    * @param {string} v
