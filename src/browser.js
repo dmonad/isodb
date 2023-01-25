@@ -5,6 +5,7 @@ import * as encoding from 'lib0/encoding'
 import * as decoding from 'lib0/decoding'
 import * as error from 'lib0/error'
 import * as promise from 'lib0/promise'
+import * as buffer from 'lib0/buffer'
 
 export const name = 'isodb-indexeddb'
 
@@ -47,7 +48,7 @@ const getKeyDecoder = (keytype) => {
     case common.StringKey:
       return id => id ? new common.StringKey(id) : null
     default:
-      return id => id ? keytype.decode(decoding.createDecoder(id)) : null
+      return id => id ? keytype.decode(decoding.createDecoder(buffer.createUint8ArrayFromArrayBuffer(id))) : null
   }
 }
 
@@ -229,8 +230,14 @@ class Transaction {
    */
   constructor (db, readonly = false) {
     this.db = db
-    const dbKeys = object.keys(db.def)
-    object.forEach(db.def, (d, dname) => object.keys(d.indexes || {}).forEach(indexname => dbKeys.push(dname + '#' + indexname)))
+    /**
+     * @type {Array<string>}
+     */
+    const dbKeys = []
+    object.forEach(db.def, (d, dname) => {
+      dbKeys.push(dname)
+      object.keys(d.indexes || {}).forEach(indexname => dbKeys.push(dname + '#' + indexname))
+    })
     const stores = idb.transact(db.db, dbKeys, readonly ? 'readonly' : 'readwrite')
     /**
      * @type {{ [Tablename in keyof DEF]: common.ITable<InstanceType<DEF[Tablename]["key"]>,InstanceType<DEF[Tablename]["value"]>,common.Defined<DEF[Tablename]["indexes"]>,undefined> }}
@@ -240,11 +247,15 @@ class Transaction {
     let storeIndex = 0
     for (const key in db.def) {
       const d = db.def[key]
-      const table = new Table(stores[storeIndex++], d.key, d.value)
+      console.log({ storeIndex }, 'before')
+      const table = new Table(stores[storeIndex], d.key, d.value)
+      storeIndex += 1
+      console.log({ storeIndex }, 'after')
       tables[key] = table
       for (const indexname in d.indexes) {
         const idxDef = d.indexes[indexname]
-        const t = new Table(stores[storeIndex++], idxDef.key, d.key)
+        const t = new Table(stores[storeIndex], idxDef.key, d.key)
+        storeIndex += 1
         const idxTable = new common.IndexedTable(t, table, idxDef)
         table.indexes[indexname] = idxTable
       }
