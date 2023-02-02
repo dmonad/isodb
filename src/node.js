@@ -135,7 +135,7 @@ class Table {
    * @param {common.RangeOption<KEY>} range
    * @return {Promise<Array<{ key: KEY, value: VALUE, fkey: undefined }>>}
    */
-  getEntries (range) {
+  getEntries (range = {}) {
     return promise.resolveWith(this.t.getRange(toNativeRange(range)).map(entry => ({
       key: /** @type {KEY} */ (this._dK(entry.key)),
       value: /** @type {VALUE} */ (this.V.decode(decoding.createDecoder(entry.value))),
@@ -148,7 +148,7 @@ class Table {
    * @param {common.RangeOption<KEY>} range
    * @return {Promise<Array<KEY>>}
    */
-  getKeys (range) {
+  getKeys (range = {}) {
     return promise.resolveWith(this.t.getRange(toNativeRange(range)).map(entry =>
       /** @type {KEY} */ (this._dK(entry.key))
     ).asArray)
@@ -159,7 +159,7 @@ class Table {
    * @param {common.RangeOption<KEY>} range
    * @return {Promise<Array<VALUE>>}
    */
-  getValues (range) {
+  getValues (range = {}) {
     return promise.resolveWith(this.t.getRange(toNativeRange(range)).map(entry =>
       /** @type {VALUE} */ (this.V.decode(decoding.createDecoder(entry.value)))
     ).asArray)
@@ -194,6 +194,9 @@ class Table {
    * @param {VALUE} value
    */
   set (key, value) {
+    if (value.constructor !== this.V || key.constructor !== this.K) {
+      throw common.unexpectedContentTypeException
+    }
     this.t.put(encodeKey(key, false), encodeValue(value))
     for (const indexname in this.indexes) {
       const indexTable = this.indexes[indexname]
@@ -210,6 +213,9 @@ class Table {
   async add (value) {
     if (/** @type {any} */ (this.K) !== common.AutoKey) {
       throw error.create('Expected key to be an AutoKey')
+    }
+    if (value.constructor !== this.V) {
+      throw common.unexpectedContentTypeException
     }
     const [lastKey] = this.t.getKeys({ reverse: true, limit: 1 }).asArray
     /**

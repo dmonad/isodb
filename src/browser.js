@@ -187,6 +187,9 @@ class Table {
    * @param {VALUE} value
    */
   set (key, value) {
+    if (value.constructor !== this.V || key.constructor !== this.K) {
+      throw common.unexpectedContentTypeException
+    }
     idb.put(this.store, encodeValue(value), encodeKey(key))
     for (const indexname in this.indexes) {
       const indexTable = this.indexes[indexname]
@@ -209,6 +212,9 @@ class Table {
     const K = /** @type {any} */ (this.K)
     if (K !== common.AutoKey) {
       throw error.create('Expected key to be an AutoKey')
+    }
+    if (value.constructor !== this.V) {
+      throw common.unexpectedContentTypeException
     }
     const key = await idb.put(this.store, encodeValue(value)).then(k => /** @type {any} */ (new K(k)))
     for (const indexname in this.indexes) {

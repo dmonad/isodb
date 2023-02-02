@@ -503,3 +503,45 @@ export const testIndexing = async tc => {
     })
   }
 }
+
+/**
+ * @param {t.TestCase} tc
+ */
+export const testInsertLogic = async tc => {
+  for (const iso of isoImpls) {
+    await iso.deleteDB(getDbName(tc.testName))
+    const db = await iso.openDB(getDbName(tc.testName), {
+      auto: {
+        key: iso.AutoKey,
+        value: iso.AnyValue
+      }
+    })
+    /**
+     * @param {function():Promise<any>} f
+     */
+    const promiseRejected = async f => {
+      try {
+        await f()
+      } catch (err) {
+        return
+      }
+      throw new Error('Expected promise to fail')
+    }
+
+    await db.transact(tr => {
+      /**
+       * @extends iso.AnyValue<any>
+       */
+      class MyValue extends iso.AnyValue {}
+      promiseRejected(() =>
+        tr.tables.auto.add(new MyValue('string'))
+      )
+      t.fails(() => {
+        tr.tables.auto.set(new iso.AutoKey(0), new MyValue('string'))
+      })
+      t.fails(() => {
+        tr.tables.auto.set(/** @type {any} */ (new iso.StringKey('dtrn')), new iso.AnyValue('string'))
+      })
+    })
+  }
+}

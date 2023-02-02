@@ -216,7 +216,7 @@ export class ITableReadonly {
   }
 
   /**
-   * @param {RangeOption<KEY>} _range
+   * @param {RangeOption<KEY>} [_range]
    * @return {Promise<Array<{ key: KEY, value: VALUE, fkey: FKEY }>>}
    */
   getEntries (_range) {
@@ -224,7 +224,7 @@ export class ITableReadonly {
   }
 
   /**
-   * @param {RangeOption<KEY>} _range
+   * @param {RangeOption<KEY>} [_range]
    * @return {Promise<Array<VALUE>>}
    */
   getValues (_range) {
@@ -232,7 +232,7 @@ export class ITableReadonly {
   }
 
   /**
-   * @param {RangeOption<KEY>} _range
+   * @param {RangeOption<KEY>} [_range]
    * @return {Promise<Array<KEY>>}
    */
   getKeys (_range) {
@@ -431,3 +431,8 @@ export class IDB {
     error.methodUnimplemented()
   }
 }
+
+/**
+ * Note that inheritance is not supported by intention.
+ */
+export const unexpectedContentTypeException = error.create('Value or key-type does not match schema.')
