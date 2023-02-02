@@ -151,7 +151,7 @@ class Table {
    * @param {common.RangeOption<KEY>} range
    * @return {Promise<Array<{ key: KEY, value: VALUE, fkey: undefined }>>}
    */
-  async getEntries (range) {
+  async getEntries (range = {}) {
     const entries = await idb.getAllKeysValues(this.store, toNativeRange(range) || undefined, range.limit)
     return entries.map(entry => ({
       value: /** @type {VALUE} */ (this.V.decode(decoding.createDecoder(entry.v))),
@@ -164,7 +164,7 @@ class Table {
    * @param {common.RangeOption<KEY>} range
    * @return {Promise<Array<VALUE>>}
    */
-  async getValues (range) {
+  async getValues (range = {}) {
     const values = await idb.getAll(this.store, toNativeRange(range) || undefined, range.limit)
     return values.map(value =>
       /** @type {VALUE} */ (this.V.decode(decoding.createDecoder(value)))
@@ -175,7 +175,7 @@ class Table {
    * @param {common.RangeOption<KEY>} range
    * @return {Promise<Array<KEY>>}
    */
-  async getKeys (range) {
+  async getKeys (range = {}) {
     const keys = await idb.getAllKeys(this.store, toNativeRange(range) || undefined, range.limit)
     return keys.map(key =>
       /** @type {KEY} */ (this._dK(key))
