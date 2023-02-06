@@ -253,10 +253,8 @@ class Transaction {
     let storeIndex = 0
     for (const key in db.def) {
       const d = db.def[key]
-      console.log({ storeIndex }, 'before')
       const table = new Table(stores[storeIndex], d.key, d.value)
       storeIndex += 1
-      console.log({ storeIndex }, 'after')
       tables[key] = table
       for (const indexname in d.indexes) {
         const idxDef = d.indexes[indexname]

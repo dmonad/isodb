@@ -516,24 +516,12 @@ export const testInsertLogic = async tc => {
         value: iso.AnyValue
       }
     })
-    /**
-     * @param {function():Promise<any>} f
-     */
-    const promiseRejected = async f => {
-      try {
-        await f()
-      } catch (err) {
-        return
-      }
-      throw new Error('Expected promise to fail')
-    }
-
     await db.transact(tr => {
       /**
        * @extends iso.AnyValue<any>
        */
       class MyValue extends iso.AnyValue {}
-      promiseRejected(() =>
+      t.promiseRejected(() =>
         tr.tables.auto.add(new MyValue('string'))
       )
       t.fails(() => {
