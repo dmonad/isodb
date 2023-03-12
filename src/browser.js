@@ -13,11 +13,18 @@ export * from './common.js'
 
 /**
  * @param {common.IEncodable} value
- * @return {Uint8Array}
+ * @return {Uint8Array | CryptoKey}
  */
 const encodeValue = value => {
   const encoder = encoding.createEncoder()
-  value.encode(encoder)
+  switch (value.constructor) {
+    case common.CryptoEcdsaKeyValue: {
+      return /** @type {common.CryptoEcdsaKeyValue} */ (value).key
+    }
+    default: {
+      value.encode(encoder)
+    }
+  }
   return encoding.toUint8Array(encoder)
 }
 
@@ -101,7 +108,10 @@ class Table {
    * @return {Promise<VALUE>}
    */
   async get (key) {
-    const v = /** @type {Uint8Array} */ (await idb.get(this.store, encodeKey(key)))
+    const v = /** @type {Uint8Array | CryptoKey} */ (await idb.get(this.store, encodeKey(key)))
+    if (v && v.constructor !== Uint8Array) { // @todo is there a better way to check for cryptokey?
+      return /** @type {any} */ (new common.CryptoEcdsaKeyValue(/** @type {any} */ (v)))
+    }
     return v == null ? null : /** @type {any} */ (this.V.decode(decoding.createDecoder(v)))
   }
 
@@ -190,7 +200,7 @@ class Table {
     if (value.constructor !== this.V || key.constructor !== this.K) {
       throw common.unexpectedContentTypeException
     }
-    idb.put(this.store, encodeValue(value), encodeKey(key))
+    idb.put(this.store, /** @type {any} */ (encodeValue(value)), encodeKey(key))
     for (const indexname in this.indexes) {
       const indexTable = this.indexes[indexname]
       indexTable.t.set(indexTable.indexDef.mapper(key, value), key)
@@ -216,7 +226,7 @@ class Table {
     if (value.constructor !== this.V) {
       throw common.unexpectedContentTypeException
     }
-    const key = await idb.put(this.store, encodeValue(value)).then(k => /** @type {any} */ (new K(k)))
+    const key = await idb.put(this.store, /** @type {any} */ (encodeValue(value))).then(k => /** @type {any} */ (new K(k)))
     for (const indexname in this.indexes) {
       const indexTable = this.indexes[indexname]
       indexTable.t.set(indexTable.indexDef.mapper(key, value), key)

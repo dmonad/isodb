@@ -1,4 +1,5 @@
 import * as t from 'lib0/testing'
+import * as ecdsa from 'lib0/crypto/ecdsa'
 
 /**
  * @type {Array<import('../src/node.js') | import('../src/browser.js')>}
@@ -516,12 +517,12 @@ export const testInsertLogic = async tc => {
         value: iso.AnyValue
       }
     })
-    await db.transact(tr => {
+    await db.transact(async tr => {
       /**
        * @extends iso.AnyValue<any>
        */
       class MyValue extends iso.AnyValue {}
-      t.promiseRejected(() =>
+      await t.promiseRejected(() =>
         tr.tables.auto.add(new MyValue('string'))
       )
       t.fails(() => {
@@ -529,6 +530,36 @@ export const testInsertLogic = async tc => {
       })
       t.fails(() => {
         tr.tables.auto.set(/** @type {any} */ (new iso.StringKey('dtrn')), new iso.AnyValue('string'))
+      })
+    })
+  }
+}
+
+/**
+ * @param {t.TestCase} tc
+ */
+export const testCrypto = async tc => {
+  for (const iso of isoImpls) {
+    await t.groupAsync(iso.name, async () => {
+      await iso.deleteDB(getDbName(tc.testName))
+      const db = await iso.openDB(getDbName(tc.testName), {
+        ecdsa: {
+          key: iso.AutoKey,
+          value: iso.CryptoEcdsaKeyValue
+        }
+      })
+      const keyPair = await ecdsa.generateKeyPair({ extractable: false })
+      t.assert(keyPair.privateKey.extractable === false)
+      // @todo Implement tests for symmetric, asymmetric, and asymmetricPair
+      // @todo new iso.*KeyValue shouldn't accept arguments. Instead, it should be auto-generated
+      await db.transact(async tr => {
+        const k = await tr.tables.ecdsa.add(new iso.CryptoEcdsaKeyValue(keyPair.privateKey))
+        const retrievedKey = await tr.tables.ecdsa.get(k)
+        console.log({ retrievedKey })
+        t.assert(retrievedKey)
+      })
+      await t.failsAsync(async () => {
+        await ecdsa.exportKey(keyPair.privateKey)
       })
     })
   }

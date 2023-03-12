@@ -5,7 +5,8 @@ import * as promise from 'lib0/promise'
 import * as error from 'lib0/error'
 import * as math from 'lib0/math'
 import * as object from 'lib0/object'
-import lmdb from 'lmdb'
+import { KeyObject } from 'node:crypto'
+import * as lmdb from 'lmdb'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
@@ -57,7 +58,19 @@ const toNativeRange = range => {
  */
 const encodeValue = value => {
   const encoder = encoding.createEncoder()
-  value.encode(encoder)
+  switch (value.constructor) {
+    case common.CryptoEcdsaKeyValue: {
+      const key = /** @type {common.CryptoEcdsaKeyValue} */ (value).key
+      const jwk = KeyObject.from(key).export({
+        format: 'jwk'
+      })
+      jwk.key_ops = key.usages
+      encoding.writeAny(encoder, jwk)
+      break
+    }
+    default:
+      value.encode(encoder)
+  }
   return encoding.toUint8Array(encoder)
 }
 

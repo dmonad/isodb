@@ -2,6 +2,9 @@ import * as error from 'lib0/error'
 import * as decoding from 'lib0/decoding'
 import * as encoding from 'lib0/encoding'
 import * as promise from 'lib0/promise'
+import * as ecdsa from 'lib0/crypto/ecdsa'
+import * as aes from 'lib0/crypto/aes-gcm'
+import * as rsa from 'lib0/crypto/rsa-oaep'
 
 /**
  * @template {Object | undefined} T
@@ -58,6 +61,37 @@ export class AnyValue {
    */
   static decode (decoder) {
     return new AnyValue(decoding.readAny(decoder))
+  }
+}
+
+/**
+ * @implements IEncodable
+ */
+export class CryptoEcdsaKeyValue {
+  /**
+   * @param {CryptoKey} key
+   */
+  constructor (key) {
+    this.key = key
+  }
+
+  /**
+   * @param {encoding.Encoder} _encoder
+   */
+  encode (_encoder) {
+    // CryptoKey encoding is handled by the specific database adapter.
+    // This method should not be called.
+    error.unexpectedCase()
+  }
+
+  /**
+   * @param {decoding.Decoder} decoder
+   * @return {Promise<CryptoEcdsaKeyValue>}
+   */
+  static async decode (decoder) {
+    const jwk = decoding.readAny(decoder)
+    const key = await ecdsa.importKey(jwk)
+    return new CryptoEcdsaKeyValue(key)
   }
 }
 
@@ -141,6 +175,8 @@ export class StringKey {
     error.methodUnimplemented()
   }
 }
+
+export const StringValue = StringKey
 
 /**
  * @template {IEncodable} KEY
