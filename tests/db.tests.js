@@ -1,5 +1,7 @@
 import * as t from 'lib0/testing'
 import * as ecdsa from 'lib0/crypto/ecdsa'
+import * as rsa from 'lib0/crypto/rsa-oaep'
+import * as aes from 'lib0/crypto/aes-gcm'
 
 /**
  * @type {Array<import('../src/node.js') | import('../src/browser.js')>}
@@ -545,21 +547,28 @@ export const testCrypto = async tc => {
       const db = await iso.openDB(getDbName(tc.testName), {
         ecdsa: {
           key: iso.AutoKey,
-          value: iso.CryptoEcdsaKeyValue
+          value: iso.CryptoKeyValue
         }
       })
-      const keyPair = await ecdsa.generateKeyPair({ extractable: false })
-      t.assert(keyPair.privateKey.extractable === false)
-      // @todo Implement tests for symmetric, asymmetric, and asymmetricPair
-      // @todo new iso.*KeyValue shouldn't accept arguments. Instead, it should be auto-generated
+      const keyPair1 = await ecdsa.generateKeyPair({ extractable: false })
+      const key3 = await aes.deriveKey('secret', 'salt', { extractable: false })
+      const keyPair2 = await rsa.generateKeyPair({ extractable: false })
+      t.assert(keyPair1.privateKey.extractable === false)
+      t.assert(keyPair2.privateKey.extractable === false)
+      t.assert(key3.extractable === false)
       await db.transact(async tr => {
-        const k = await tr.tables.ecdsa.add(new iso.CryptoEcdsaKeyValue(keyPair.privateKey))
-        const retrievedKey = await tr.tables.ecdsa.get(k)
-        console.log({ retrievedKey })
-        t.assert(retrievedKey)
+        const k1 = await tr.tables.ecdsa.add(new iso.CryptoKeyValue(keyPair1.privateKey))
+        const retrievedKey1 = await tr.tables.ecdsa.get(k1)
+        t.assert(retrievedKey1)
+        const k2 = await tr.tables.ecdsa.add(new iso.CryptoKeyValue(keyPair2.privateKey))
+        const retrievedKey2 = await tr.tables.ecdsa.get(k2)
+        t.assert(retrievedKey2)
+        const k3 = await tr.tables.ecdsa.add(new iso.CryptoKeyValue(key3))
+        const retrievedKey3 = await tr.tables.ecdsa.get(k3)
+        t.assert(retrievedKey3)
       })
       await t.failsAsync(async () => {
-        await ecdsa.exportKey(keyPair.privateKey)
+        await ecdsa.exportKey(keyPair1.privateKey)
       })
     })
   }

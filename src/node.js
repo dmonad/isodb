@@ -59,8 +59,8 @@ const toNativeRange = range => {
 const encodeValue = value => {
   const encoder = encoding.createEncoder()
   switch (value.constructor) {
-    case common.CryptoEcdsaKeyValue: {
-      const key = /** @type {common.CryptoEcdsaKeyValue} */ (value).key
+    case common.CryptoKeyValue: {
+      const key = /** @type {common.CryptoKeyValue} */ (value).key
       const jwk = KeyObject.from(key).export({
         format: 'jwk'
       })

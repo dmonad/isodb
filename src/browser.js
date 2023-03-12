@@ -18,8 +18,8 @@ export * from './common.js'
 const encodeValue = value => {
   const encoder = encoding.createEncoder()
   switch (value.constructor) {
-    case common.CryptoEcdsaKeyValue: {
-      return /** @type {common.CryptoEcdsaKeyValue} */ (value).key
+    case common.CryptoKeyValue: {
+      return /** @type {common.CryptoKeyValue} */ (value).key
     }
     default: {
       value.encode(encoder)
@@ -110,7 +110,7 @@ class Table {
   async get (key) {
     const v = /** @type {Uint8Array | CryptoKey} */ (await idb.get(this.store, encodeKey(key)))
     if (v && v.constructor !== Uint8Array) { // @todo is there a better way to check for cryptokey?
-      return /** @type {any} */ (new common.CryptoEcdsaKeyValue(/** @type {any} */ (v)))
+      return /** @type {any} */ (new common.CryptoKeyValue(/** @type {any} */ (v)))
     }
     return v == null ? null : /** @type {any} */ (this.V.decode(decoding.createDecoder(v)))
   }

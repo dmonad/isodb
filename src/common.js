@@ -67,7 +67,7 @@ export class AnyValue {
 /**
  * @implements IEncodable
  */
-export class CryptoEcdsaKeyValue {
+export class CryptoKeyValue {
   /**
    * @param {CryptoKey} key
    */
@@ -86,12 +86,19 @@ export class CryptoEcdsaKeyValue {
 
   /**
    * @param {decoding.Decoder} decoder
-   * @return {Promise<CryptoEcdsaKeyValue>}
+   * @return {Promise<CryptoKeyValue>}
    */
   static async decode (decoder) {
     const jwk = decoding.readAny(decoder)
-    const key = await ecdsa.importKey(jwk)
-    return new CryptoEcdsaKeyValue(key)
+    switch (jwk.kty) {
+      case 'RSA':
+        return new CryptoKeyValue(await rsa.importKey(jwk))
+      case 'EC':
+        return new CryptoKeyValue(await ecdsa.importKey(jwk))
+      case 'oct':
+        return new CryptoKeyValue(await aes.importKey(jwk))
+    }
+    error.unexpectedCase()
   }
 }
 
