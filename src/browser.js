@@ -250,19 +250,20 @@ class Transaction {
      * @type {Array<string>}
      */
     const dbKeys = []
-    object.forEach(db.def, (d, dname) => {
+    object.forEach(db.def.tables, (d, dname) => {
       dbKeys.push(dname)
       object.keys(d.indexes || {}).forEach(indexname => dbKeys.push(dname + '#' + indexname))
     })
     const stores = idb.transact(db.db, dbKeys, readonly ? 'readonly' : 'readwrite')
     /**
-     * @type {{ [Tablename in keyof DEF]: common.ITable<InstanceType<DEF[Tablename]["key"]>,InstanceType<DEF[Tablename]["value"]>,common.Defined<DEF[Tablename]["indexes"]>,undefined> }}
+     * @type {{ [Tablename in keyof DEF["tables"]]: common.ITable<InstanceType<DEF["tables"][Tablename]["key"]>,InstanceType<DEF["tables"][Tablename]["value"]>,common.Defined<DEF["tables"][Tablename]["indexes"]>,undefined> }}
      */
     this.tables = /** @type {any} */ ({})
     const tables = /** @type {any} */ (this.tables)
+    const defTables = db.def.tables
     let storeIndex = 0
-    for (const key in db.def) {
-      const d = db.def[key]
+    for (const key in defTables) {
+      const d = defTables[key]
       const table = new Table(stores[storeIndex], d.key, d.value)
       storeIndex += 1
       tables[key] = table
@@ -290,6 +291,7 @@ class TransactionReadonly extends Transaction {
     super(db, true)
   }
 }
+
 /**
  * @template {common.IDbDef} DEF
  * @implements common.IDB<DEF>
@@ -348,8 +350,9 @@ class DB {
 export const openDB = (name, def) =>
   idb.openDB(name, db => {
     const stores = []
-    for (const key in def) {
-      const d = def[key]
+    const defTables = def.tables
+    for (const key in defTables) {
+      const d = defTables[key]
       const autoIncrement = d.key === /** @type {any} */ (common.AutoKey)
       stores.push([key, { autoIncrement }])
       for (const indexname in d.indexes) {

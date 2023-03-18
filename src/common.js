@@ -206,7 +206,15 @@ export const StringValue = StringKey
  */
 
 /**
- * @typedef {{ [key: string]: ITableDef<any,any> }} IDbDef
+ * @template {typeof IEncodable} VAL
+ *
+ * @typedef {{ [key: string]: VAL }} IObjectDef
+ */
+
+/**
+ * @typedef {Object} IDbDef
+ * @property {{ [key: string]: ITableDef<any,any> }} IDbDef.tables
+ * @property {{ [key: string]: IObjectDef<any> }} [IDbDef.objects]
  */
 
 /**
@@ -420,7 +428,7 @@ export class ITransaction {
    */
   constructor (_db) {
     /**
-     * @type {{ [Tablename in keyof DEF]: ITable<InstanceType<DEF[Tablename]["key"]>,InstanceType<DEF[Tablename]["value"]>,Defined<DEF[Tablename]["indexes"]>,undefined> }}
+     * @type {{ [Tablename in keyof DEF["tables"]]: ITable<InstanceType<DEF["tables"][Tablename]["key"]>,InstanceType<DEF["tables"][Tablename]["value"]>,Defined<DEF["tables"][Tablename]["indexes"]>,undefined> }}
      */
     this.tables = /** @type {any} */ ({})
   }
@@ -437,7 +445,7 @@ export class ITransactionReadonly {
    */
   constructor (_db) {
     /**
-     * @type {{ [Tablename in keyof DEF]:ITableReadonly<InstanceType<DEF[Tablename]["key"]>,InstanceType<DEF[Tablename]["value"]>,Defined<DEF[Tablename]["indexes"]>,undefined> }}
+     * @type {{ [Tablename in keyof DEF["tables"]]:ITableReadonly<InstanceType<DEF["tables"][Tablename]["key"]>,InstanceType<DEF["tables"][Tablename]["value"]>,Defined<DEF["tables"][Tablename]["indexes"]>,undefined> }}
      */
     this.tables = /** @type {any} */ ({})
   }

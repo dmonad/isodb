@@ -27,7 +27,7 @@ export const testIterator = async tc => {
   for (const iso of isoImpls) {
     await t.groupAsync(iso.name, async () => {
       await iso.deleteDB(getDbName(tc.testName))
-      const def = { strings: { key: iso.StringKey, value: iso.AnyValue }, auto: { key: iso.AutoKey, value: iso.AnyValue } }
+      const def = { tables: { strings: { key: iso.StringKey, value: iso.AnyValue }, auto: { key: iso.AutoKey, value: iso.AnyValue } } }
       const db = await iso.openDB(getDbName(tc.testName), def)
       db.transact(tr => {
         for (let i = 1; i < 30; i++) {
@@ -209,7 +209,7 @@ export const testTransactionsAreExecutedOneAfterAnother = async tc => {
   for (const iso of isoImpls) {
     await t.groupAsync(iso.name, async () => {
       await iso.deleteDB(getDbName(tc.testName))
-      const def = { abc: { key: iso.StringKey, value: iso.AnyValue }, xyz: { key: iso.AutoKey, value: iso.AnyValue } }
+      const def = { tables: { abc: { key: iso.StringKey, value: iso.AnyValue }, xyz: { key: iso.AutoKey, value: iso.AnyValue } } }
       const db = await iso.openDB(getDbName(tc.testName), def)
       /**
        * @type {Array<string>}
@@ -257,7 +257,7 @@ export const testBasics = async tc => {
   for (const iso of isoImpls) {
     await t.groupAsync(iso.name, async () => {
       await iso.deleteDB(getDbName(tc.testName))
-      const def = { abc: { key: iso.StringKey, value: iso.AnyValue }, xyz: { key: iso.AutoKey, value: iso.AnyValue } }
+      const def = { tables: { abc: { key: iso.StringKey, value: iso.AnyValue }, xyz: { key: iso.AutoKey, value: iso.AnyValue } } }
       const db = await iso.openDB(getDbName(tc.testName), def)
       await db.transact(async tr => {
         const testValue = new iso.AnyValue({ test: 'someVal' })
@@ -281,7 +281,7 @@ export const testRetrieval = async tc => {
   for (const iso of isoImpls) {
     await t.groupAsync(iso.name, async () => {
       await iso.deleteDB(getDbName(tc.testName))
-      const def = { auto: { key: iso.AutoKey, value: iso.AnyValue } }
+      const def = { tables: { auto: { key: iso.AutoKey, value: iso.AnyValue } } }
       const db = await iso.openDB(getDbName(tc.testName), def)
       await db.transact(async tr => {
         for (let i = 1; i <= 10; i++) {
@@ -315,7 +315,7 @@ export const testBenchmark = async tc => {
     await t.groupAsync(iso.name, async () => {
       await iso.deleteDB(getDbName(tc.testName))
       const n = 2000
-      const def = { abc: { key: iso.StringKey, value: iso.AnyValue }, auto: { key: iso.AutoKey, value: iso.AnyValue } }
+      const def = { tables: { abc: { key: iso.StringKey, value: iso.AnyValue }, auto: { key: iso.AutoKey, value: iso.AnyValue } } }
       await t.measureTimeAsync(`${iso.name}: Time to insert ${n} elements`, async () => {
         const db = await iso.openDB(getDbName(tc.testName), def)
         await db.transact(async tr => {
@@ -438,13 +438,15 @@ export const testIndexing = async tc => {
   for (const iso of isoImpls) {
     await iso.deleteDB(getDbName(tc.testName))
     const db = await iso.openDB(getDbName(tc.testName), {
-      auto: {
-        key: iso.AutoKey,
-        value: iso.AnyValue,
-        indexes: {
-          stringified: {
-            key: iso.StringKey,
-            mapper: (k, _v) => new iso.StringKey(k.v + '')
+      tables: {
+        auto: {
+          key: iso.AutoKey,
+          value: iso.AnyValue,
+          indexes: {
+            stringified: {
+              key: iso.StringKey,
+              mapper: (k, _v) => new iso.StringKey(k.v + '')
+            }
           }
         }
       }
@@ -514,9 +516,11 @@ export const testInsertLogic = async tc => {
   for (const iso of isoImpls) {
     await iso.deleteDB(getDbName(tc.testName))
     const db = await iso.openDB(getDbName(tc.testName), {
-      auto: {
-        key: iso.AutoKey,
-        value: iso.AnyValue
+      tables: {
+        auto: {
+          key: iso.AutoKey,
+          value: iso.AnyValue
+        }
       }
     })
     await db.transact(async tr => {
@@ -545,9 +549,11 @@ export const testCrypto = async tc => {
     await t.groupAsync(iso.name, async () => {
       await iso.deleteDB(getDbName(tc.testName))
       const db = await iso.openDB(getDbName(tc.testName), {
-        ecdsa: {
-          key: iso.AutoKey,
-          value: iso.CryptoKeyValue
+        tables: {
+          ecdsa: {
+            key: iso.AutoKey,
+            value: iso.CryptoKeyValue
+          }
         }
       })
       const keyPair1 = await ecdsa.generateKeyPair({ extractable: false })
@@ -570,6 +576,22 @@ export const testCrypto = async tc => {
       await t.failsAsync(async () => {
         await ecdsa.exportKey(keyPair1.privateKey)
       })
+    })
+  }
+}
+
+/**
+ * @param {t.TestCase} tc
+ */
+export const testObjectStorage = async tc => {
+  for (const iso of isoImpls) {
+    const db = await iso.openDB(getDbName(tc.testName), {
+      tables: { },
+      objects: {
+        obj1: {
+          val1: iso.StringValue
+        }
+      }
     })
   }
 }
