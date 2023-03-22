@@ -593,5 +593,8 @@ export const testObjectStorage = async tc => {
         }
       }
     })
+    await db.transact(async tr => {
+      tr.objects
+    })
   }
 }

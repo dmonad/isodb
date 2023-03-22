@@ -214,7 +214,7 @@ export const StringValue = StringKey
 /**
  * @typedef {Object} IDbDef
  * @property {{ [key: string]: ITableDef<any,any> }} IDbDef.tables
- * @property {{ [key: string]: IObjectDef<any> }} [IDbDef.objects]
+ * @property {{ [key: string]: IObjectDef<any> }} IDbDef.objects
  */
 
 /**
@@ -418,6 +418,47 @@ export class IndexedTable {
 }
 
 /**
+ * @template {IObjectDef<any>} ODef
+ *
+ * @interface
+ */
+export class IObjectReadonly {
+  /**
+   * @template {keyof ODef} Key
+   * @param {Key} _key
+   * @return {Promise<ODef[Key]|null>}
+   */
+  get (_key) {
+    error.methodUnimplemented()
+  }
+}
+
+/**
+ * @template {IObjectDef<any>} ODef
+ *
+ * @interface
+ * @extends IObjectReadonly<ODef>
+ */
+export class IObject extends IObjectReadonly {
+  /**
+   * @template {keyof ODef} Key
+   * @param {Key} _key
+   * @param {ODef[Key]} _value
+   */
+  set (_key, _value) {
+    error.methodUnimplemented()
+  }
+
+  /**
+   * @template {keyof ODef} Key
+   * @param {Key} _key
+   */
+  remove (_key) {
+    error.methodUnimplemented()
+  }
+}
+
+/**
  * @template {IDbDef} DEF
  *
  * @interface
@@ -431,6 +472,10 @@ export class ITransaction {
      * @type {{ [Tablename in keyof DEF["tables"]]: ITable<InstanceType<DEF["tables"][Tablename]["key"]>,InstanceType<DEF["tables"][Tablename]["value"]>,Defined<DEF["tables"][Tablename]["indexes"]>,undefined> }}
      */
     this.tables = /** @type {any} */ ({})
+    /**
+     * @type {{ [Objectname in keyof DEF["objects"]]: IObject<DEF["objects"][Objectname]> }}
+     */
+    this.objects = /** @type {any} */ ({})
   }
 }
 
