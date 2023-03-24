@@ -214,7 +214,7 @@ export const StringValue = StringKey
 /**
  * @typedef {Object} IDbDef
  * @property {{ [key: string]: ITableDef<any,any> }} IDbDef.tables
- * @property {{ [key: string]: IObjectDef<any> }} IDbDef.objects
+ * @property {{ [key: string]: IObjectDef<any> }} [IDbDef.objects]
  */
 
 /**
@@ -473,7 +473,7 @@ export class ITransaction {
      */
     this.tables = /** @type {any} */ ({})
     /**
-     * @type {{ [Objectname in keyof DEF["objects"]]: IObject<DEF["objects"][Objectname]> }}
+     * @type {{ [Objectname in keyof DEF["objects"]]: IObject<NonNullable<DEF["objects"][Objectname]>> }}
      */
     this.objects = /** @type {any} */ ({})
   }

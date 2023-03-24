@@ -275,6 +275,10 @@ class Transaction {
         table.indexes[indexname] = idxTable
       }
     }
+    /**
+     * @type {{ [Objectname in keyof DEF["objects"]]: common.IObject<NonNullable<DEF["objects"][Objectname]>> }}
+     */
+    this.objects = /** @type {any} */ ({})
   }
 }
 
