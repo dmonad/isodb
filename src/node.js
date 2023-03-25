@@ -288,7 +288,7 @@ class DB {
     this.def = def
     this.env = env
     /**
-     * @type {{ [Tablename in keyof DEF["tables"]]: Table<InstanceType<DEF["tables"][Tablename]["key"]>, InstanceType<DEF["tables"][Tablename]["value"]>, common.Defined<DEF["tables"][Tablename]["indexes"]>> }}
+     * @type {{ [Tablename in keyof DEF["tables"]]: Table<InstanceType<NonNullable<DEF["tables"]>[Tablename]["key"]>, InstanceType<NonNullable<DEF["tables"]>[Tablename]["value"]>, common.Defined<NonNullable<DEF["tables"]>[Tablename]["indexes"]>> }}
      */
     this.tables = /** @type {any} */ ({})
     for (const dbname in def.tables) {
@@ -362,7 +362,7 @@ class DB {
  */
 export const openDB = async (location, def) => {
   await fs.mkdir(path.dirname(location), { recursive: true })
-  const maxDbs = object.map(def.tables, d => object.length(d.indexes || {}) + 1).reduce(math.add, 0)
+  const maxDbs = object.map(def.tables || {}, d => object.length(d.indexes || {}) + 1).reduce(math.add, 0)
   const env = lmdb.open({
     path: location,
     maxDbs,

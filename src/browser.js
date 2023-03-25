@@ -250,13 +250,13 @@ class Transaction {
      * @type {Array<string>}
      */
     const dbKeys = []
-    object.forEach(db.def.tables, (d, dname) => {
+    object.forEach(db.def.tables || {}, (d, dname) => {
       dbKeys.push(dname)
       object.keys(d.indexes || {}).forEach(indexname => dbKeys.push(dname + '#' + indexname))
     })
     const stores = idb.transact(db.db, dbKeys, readonly ? 'readonly' : 'readwrite')
     /**
-     * @type {{ [Tablename in keyof DEF["tables"]]: common.ITable<InstanceType<DEF["tables"][Tablename]["key"]>,InstanceType<DEF["tables"][Tablename]["value"]>,common.Defined<DEF["tables"][Tablename]["indexes"]>,undefined> }}
+     * @type {{ [Tablename in keyof DEF["tables"]]: common.ITable<InstanceType<NonNullable<DEF["tables"]>[Tablename]["key"]>,InstanceType<NonNullable<DEF["tables"]>[Tablename]["value"]>,common.Defined<NonNullable<DEF["tables"]>[Tablename]["indexes"]>,undefined> }}
      */
     this.tables = /** @type {any} */ ({})
     const tables = /** @type {any} */ (this.tables)

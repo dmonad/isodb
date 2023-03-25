@@ -586,7 +586,6 @@ export const testCrypto = async tc => {
 export const testObjectStorage = async tc => {
   for (const iso of isoImpls) {
     const db = await iso.openDB(getDbName(tc.testName), {
-      tables: { },
       objects: {
         obj1: {
           val1: iso.StringValue
