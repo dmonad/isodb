@@ -426,7 +426,7 @@ export class IObjectReadonly {
   /**
    * @template {keyof ODef} Key
    * @param {Key} _key
-   * @return {Promise<ODef[Key]|null>}
+   * @return {Promise<InstanceType<ODef[Key]>|null>}
    */
   get (_key) {
     error.methodUnimplemented()
@@ -443,7 +443,7 @@ export class IObject extends IObjectReadonly {
   /**
    * @template {keyof ODef} Key
    * @param {Key} _key
-   * @param {ODef[Key]} _value
+   * @param {InstanceType<ODef[Key]>} _value
    */
   set (_key, _value) {
     error.methodUnimplemented()

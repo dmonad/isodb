@@ -593,7 +593,14 @@ export const testObjectStorage = async tc => {
       }
     })
     await db.transact(async tr => {
-      tr.objects.obj1.get('val1')
+      const res1 = await tr.objects.obj1.get('val1')
+      t.assert(res1 === null)
+      tr.objects.obj1.set('val1', new iso.StringValue('test1'))
+      const res2 = await tr.objects.obj1.get('val1')
+      t.assert(res2 && res2.v === 'test1')
+      tr.objects.obj1.remove('val1')
+      const res3 = await tr.objects.obj1.get('val1')
+      t.assert(res3 === null)
     })
   }
 }
