@@ -261,6 +261,52 @@ class Table {
 }
 
 /**
+ * @template {common.IObjectDef<any>} ODef
+ *
+ * @implements common.IObject<ODef>
+ */
+export class ObjectStore {
+  /**
+   * @param {lmdb.Database} t
+   * @param {ODef} odef
+   */
+  constructor (t, odef) {
+    this.t = t
+    this.odef = odef
+  }
+
+  /**
+   * @template {keyof ODef} Key
+   * @param {Key} key
+   * @return {Promise<InstanceType<ODef[Key]>|null>}
+   */
+  async get (key) {
+    const buf = this.t.getBinary(key)
+    return buf == null ? null : /** @type {ODef[Key]} */ (this.odef[key].decode(decoding.createDecoder(buf)))
+  }
+
+  /**
+   * @template {keyof ODef} Key
+   * @param {Key} key
+   * @param {InstanceType<ODef[Key]>} value
+   */
+  set (key, value) {
+    if (value.constructor !== this.odef[key]) {
+      throw common.unexpectedContentTypeException
+    }
+    this.t.put(key, encodeValue(value))
+  }
+
+  /**
+   * @template {keyof ODef} Key
+   * @param {Key} key
+   */
+  remove (key) {
+    this.t.remove(key)
+  }
+}
+
+/**
  * @template {common.IDbDef} DEF
  * @implements common.ITransaction<DEF>
  */
@@ -316,6 +362,16 @@ class DB {
      * @type {{ [Objectname in keyof DEF["objects"]]: common.IObject<NonNullable<DEF["objects"][Objectname]>> }}
      */
     this.objects = /** @type {any} */ ({})
+    for (const dbname in def.objects) {
+      const d = def.objects[dbname]
+      const conf = {
+        name: dbname,
+        encoding: /** @type {'binary'} */ ('binary'),
+        keyEncoding: /** @type {'ordered-binary'} */ ('ordered-binary')
+      }
+      const store = new ObjectStore(env.openDB(conf), d)
+      ;/** @type {any} */ (this.objects)[dbname] = store
+    }
   }
 
   /**
@@ -362,7 +418,7 @@ class DB {
  */
 export const openDB = async (location, def) => {
   await fs.mkdir(path.dirname(location), { recursive: true })
-  const maxDbs = object.map(def.tables || {}, d => object.length(d.indexes || {}) + 1).reduce(math.add, 0)
+  const maxDbs = object.map(def.tables || {}, d => object.length(d.indexes || {}) + 1).reduce(math.add, 0) + object.length(def.objects || {})
   const env = lmdb.open({
     path: location,
     maxDbs,

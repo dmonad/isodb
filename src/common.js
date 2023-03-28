@@ -60,7 +60,7 @@ export class AnyValue {
    * @return {AnyValue<any>}
    */
   static decode (decoder) {
-    return new AnyValue(decoding.readAny(decoder))
+    return new this(decoding.readAny(decoder))
   }
 }
 
@@ -125,7 +125,7 @@ export class AutoKey {
    * @return {IEncodable}
    */
   static decode (decoder) {
-    return new AutoKey(decoding.readUint32(decoder))
+    return new this(decoding.readUint32(decoder))
   }
 }
 
@@ -152,7 +152,7 @@ export class UintKey {
    * @return {IEncodable}
    */
   static decode (decoder) {
-    return new UintKey(decoding.readUint32(decoder))
+    return new this(decoding.readUint32(decoder))
   }
 }
 
@@ -183,7 +183,32 @@ export class StringKey {
   }
 }
 
-export const StringValue = StringKey
+/**
+ * @implements IEncodable
+ */
+export class StringValue {
+  /**
+   * @param {string} v
+   */
+  constructor (v) {
+    this.v = v
+  }
+
+  /**
+   * @param {encoding.Encoder} encoder
+   */
+  encode (encoder) {
+    encoding.writeVarString(encoder, this.v)
+  }
+
+  /**
+   * @param {decoding.Decoder} _decoder
+   * @return {IEncodable}
+   */
+  static decode (_decoder) {
+    return new this(decoding.readVarString(_decoder))
+  }
+}
 
 /**
  * @template {IEncodable} KEY
