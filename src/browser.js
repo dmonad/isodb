@@ -251,8 +251,11 @@ class Transaction {
      */
     const dbKeys = []
     object.forEach(db.def.tables || {}, (d, dname) => {
-      dbKeys.push(dname)
-      object.keys(d.indexes || {}).forEach(indexname => dbKeys.push(dname + '#' + indexname))
+      dbKeys.push(`table#${dname}`)
+      object.keys(d.indexes || {}).forEach(indexname => dbKeys.push(`table#${dname}#${indexname}`))
+    })
+    object.forEach(db.def.objects || {}, (_d, dname) => {
+      dbKeys.push(`object#${dname}`)
     })
     const stores = idb.transact(db.db, dbKeys, readonly ? 'readonly' : 'readwrite')
     /**
@@ -279,6 +282,13 @@ class Transaction {
      * @type {{ [Objectname in keyof DEF["objects"]]: common.IObject<NonNullable<DEF["objects"][Objectname]>> }}
      */
     this.objects = /** @type {any} */ ({})
+    const objectStores = /** @type {any} */ (this.objects)
+    const defObjects = db.def.objects
+    for (const key in defObjects) {
+      const d = defObjects[key]
+      objectStores[key] = new ObjectStore(stores[storeIndex], d)
+      storeIndex += 1
+    }
   }
 }
 
@@ -358,12 +368,15 @@ export const openDB = (name, def) =>
     for (const key in defTables) {
       const d = defTables[key]
       const autoIncrement = d.key === /** @type {any} */ (common.AutoKey)
-      stores.push([key, { autoIncrement }])
+      stores.push([`table#${key}`, { autoIncrement }])
       for (const indexname in d.indexes) {
         const idxDef = d.indexes[indexname]
         const autoIncrement = idxDef.key === /** @type {any} */ (common.AutoKey)
-        stores.push([key + '#' + indexname, { autoIncrement }])
+        stores.push([`table#${key}#${indexname}`, { autoIncrement }])
       }
+    }
+    for (const key in def.objects) {
+      stores.push([`object#${key}`])
     }
     idb.createStores(db, stores)
   }).then(db => new DB(db, def))
@@ -372,3 +385,52 @@ export const openDB = (name, def) =>
  * @param {string} name
  */
 export const deleteDB = (name) => idb.deleteDB(name)
+
+/**
+ * @template {common.IObjectDef<any>} ODef
+ *
+ * @implements common.IObject<ODef>
+ */
+export class ObjectStore {
+  /**
+   * @param {IDBObjectStore} store
+   * @param {ODef} odef
+   */
+  constructor (store, odef) {
+    this.store = store
+    this.odef = odef
+  }
+
+  /**
+   * @template {keyof ODef} Key
+   * @param {Key} key
+   * @return {Promise<InstanceType<ODef[Key]>|null>}
+   */
+  async get (key) {
+    const v = /** @type {Uint8Array | CryptoKey} */ (await idb.get(this.store, /** @type {string} */ (key)))
+    if (v && v.constructor !== Uint8Array) { // @todo is there a better way to check for cryptokey?
+      return /** @type {any} */ (new common.CryptoKeyValue(/** @type {any} */ (v)))
+    }
+    return v == null ? null : /** @type {any} */ (this.odef[key].decode(decoding.createDecoder(v)))
+  }
+
+  /**
+   * @template {keyof ODef} Key
+   * @param {Key} key
+   * @param {InstanceType<ODef[Key]>} value
+   */
+  set (key, value) {
+    if (value.constructor !== this.odef[key]) {
+      throw common.unexpectedContentTypeException
+    }
+    idb.put(this.store, /** @type {any} */ (encodeValue(value)), /** @type {string} */ (key))
+  }
+
+  /**
+   * @template {keyof ODef} Key
+   * @param {Key} key
+   */
+  remove (key) {
+    idb.del(this.store, /** @type {string} */ (key))
+  }
+}

@@ -7,7 +7,7 @@ import * as isoIdb from '../src/browser.js'
 import * as isoLmdb from '../src/node.js'
 
 db.addIsoImpls(isoLmdb)
-// db.addIsoImpls(isoIdb) // @todo reintroduce
+db.addIsoImpls(isoIdb)
 
 /* istanbul ignore if */
 if (isBrowser) {
