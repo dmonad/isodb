@@ -7,8 +7,8 @@ import * as math from 'lib0/math'
 import * as object from 'lib0/object'
 import { KeyObject } from 'node:crypto'
 import * as lmdb from 'lmdb'
-import fs from 'node:fs/promises'
-import path from 'node:path'
+import * as fs from 'node:fs/promises'
+import * as path from 'node:path'
 
 export * from './common.js'
 
