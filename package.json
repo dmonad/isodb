@@ -4,7 +4,6 @@
   "description": "Isomorphic NoSQL Database",
   "sideEffects": false,
   "type": "module",
-  "types": "./dist/src/interface.d.ts",
   "funding": {
     "type": "GitHub Sponsors ❤",
     "url": "https://github.com/sponsors/dmonad"
@@ -13,14 +12,12 @@
     "./package.json": "./package.json",
     ".": {
       "node": {
-        "module": "./src/node.js",
-        "import": "./src/node.js",
-        "types": "./dist/src/interface.d.ts"
+        "types": "./dist/src/interface.d.ts",
+        "default": "./src/node.js"
       },
       "browser": {
-        "module": "./src/browser.js",
-        "import": "./src/browser.js",
-        "types": "./dist/src/interface.d.ts"
+        "types": "./dist/src/interface.d.ts",
+        "default": "./src/browser.js"
       }
     }
   },
@@ -33,11 +30,11 @@
     "types": "tsc",
     "debug:browser": "npm run gentesthtml && 0serve -o test.html",
     "debug:node": "node --inspect-brk tests/index.js",
-    "test": "node tests/index.js",
-    "test-coverage": "npm run clean && npm run lint && npm run dist && nyc --check-coverage --lines 100 --branches 100 --functions 100 --statements 100 node --unhandled-rejections=strict ./dist/test.cjs --repetition-time 50 --production",
+    "test": "c8 node tests/index.js",
+    "test-coverage": "npm run clean && npm run lint && npm run dist && c8 --check-coverage --lines 100 --branches 100 --functions 100 --statements 100 node --unhandled-rejections=strict ./dist/test.cjs --repetition-time 50 --production",
     "test-inspect": "node --inspect-brk --unhandled-rejections=strict ./test.js --repetition-time 50 --production",
     "test-extensive": "node test.js && npm test -- --repetition-time 30000 --extensive",
-    "test-code-coverage": "npm run clean && npm run dist && nyc --reporter html node ./dist/test.cjs --production",
+    "test-code-coverage": "npm run clean && npm run dist && c8 --reporter html node ./dist/test.cjs --production",
     "lint": "standard && tsc",
     "preversion": "npm run clean && npm run test && npm run types && npm run dist",
     "postpublish": "npm run clean",
@@ -65,6 +62,7 @@
   },
   "devDependencies": {
     "@types/node": "^18.11.9",
+    "c8": "^7.13.0",
     "concurrently": "^7.5.0",
     "fake-indexeddb": "^4.0.0",
     "standard": "^17.0.0",

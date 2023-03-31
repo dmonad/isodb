@@ -6,7 +6,7 @@ import * as isoIdb from '../src/browser.js'
 
 db.addIsoImpls(isoIdb)
 
-/* istanbul ignore if */
+/* c8 ignore if 3 */
 if (isBrowser) {
   log.createVConsole(document.body)
 }
@@ -14,7 +14,7 @@ if (isBrowser) {
 runTests(/** @type {any} */ ({
   db
 })).then(success => {
-  /* istanbul ignore next */
+  /* c8 ignore next 3 */
   if (isNode) {
     process.exit(success ? 0 : 1)
   }
