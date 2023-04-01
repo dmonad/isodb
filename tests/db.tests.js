@@ -2,6 +2,8 @@ import * as t from 'lib0/testing'
 import * as ecdsa from 'lib0/crypto/ecdsa'
 import * as rsa from 'lib0/crypto/rsa-oaep'
 import * as aes from 'lib0/crypto/aes-gcm'
+import * as encoding from 'lib0/encoding'
+import * as decoding from 'lib0/decoding'
 
 /**
  * @type {Array<import('../src/node.js') | import('../src/browser.js')>}
@@ -198,6 +200,20 @@ export const testIterator = async tc => {
         })
         t.assert(read.length === 5 && read.every((v, index) => v === '' + (index + 2)))
       })
+      // range limit reversed
+      await db.transactReadonly(async tr => {
+        /**
+         * @type {Array<string>}
+         */
+        const read = []
+        await tr.tables.strings.iterate({ start: new iso.StringKey('6'), startExclusive: true, limit: 5, reverse: true }, (cursor) => {
+          const k = cursor.key
+          const v = cursor.value
+          t.compare(k.v, v.v)
+          read.push(k.v)
+        })
+        t.assert(read.length === 5 && read.every((v, index) => v === '' + (5 - index)))
+      })
     })
   }
 }
@@ -269,7 +285,9 @@ export const testBasics = async tc => {
         const key = await xyzTable.add(new iso.AnyValue({ test: 'someVal' }))
         const v = await xyzTable.get(key)
         t.compare(v && v.v, { test: 'someVal' }, 'checked someval')
+        await t.failsAsync(() => abcTable.add(new iso.AnyValue({ test: 'testval' })))
       })
+      await db.destroy()
     })
   }
 }
@@ -448,6 +466,16 @@ export const testIndexing = async tc => {
               mapper: (k, _v) => new iso.StringKey(k.v + '')
             }
           }
+        },
+        named: {
+          key: iso.StringKey,
+          value: iso.StringValue,
+          indexes: {
+            reversed: {
+              key: iso.StringKey,
+              mapper: (k, _v) => new iso.StringKey(k.v.split('').reverse().join('')) // @todo mapper should only contain key and not value
+            }
+          }
         }
       }
     })
@@ -506,6 +534,17 @@ export const testIndexing = async tc => {
         })
       })
     })
+    await t.groupAsync(`${iso.name}: named indexing`, async () => {
+      await db.transact(async tr => {
+        tr.tables.named.set(new iso.StringKey('key'), new iso.StringValue('val1'))
+        tr.tables.named.set(new iso.StringKey('key'), new iso.StringValue('val2'))
+        tr.tables.named.set(new iso.StringKey('key'), new iso.StringValue('val3'))
+        t.assert(/** @type {import('../src/common.js').StringValue} */ (await tr.tables.named.indexes.reversed.get(new iso.StringKey('yek'))).v === 'val3')
+        t.assert((await tr.tables.named.indexes.reversed.get(new iso.StringKey('key'))) === null)
+        tr.tables.named.remove(new iso.StringKey('key'))
+        t.assert((await tr.tables.named.indexes.reversed.get(new iso.StringKey('yek'))) === null)
+      })
+    })
   }
 }
 
@@ -554,6 +593,11 @@ export const testCrypto = async tc => {
             key: iso.AutoKey,
             value: iso.CryptoKeyValue
           }
+        },
+        objects: {
+          ecdsa: {
+            key: iso.CryptoKeyValue
+          }
         }
       })
       const keyPair1 = await ecdsa.generateKeyPair({ extractable: false })
@@ -572,9 +616,69 @@ export const testCrypto = async tc => {
         const k3 = await tr.tables.ecdsa.add(new iso.CryptoKeyValue(key3))
         const retrievedKey3 = await tr.tables.ecdsa.get(k3)
         t.assert(retrievedKey3)
+        tr.objects.ecdsa.set('key', new iso.CryptoKeyValue(key3))
+        const k4 = await tr.objects.ecdsa.get('key')
+        t.assert(k4)
+        tr.objects.ecdsa.remove('key')
+        const k5 = await tr.objects.ecdsa.get('key')
+        t.assert(k5 == null)
       })
       await t.failsAsync(async () => {
         await ecdsa.exportKey(keyPair1.privateKey)
+      })
+    })
+  }
+}
+
+/**
+ * @typedef {import('../src/common.js').IEncodable} IEncodable
+ */
+
+/**
+ * @param {t.TestCase} tc
+ */
+export const testCustomKeyValue = async tc => {
+  for (const iso of isoImpls) {
+    await t.groupAsync(iso.name, async () => {
+      await iso.deleteDB(getDbName(tc.testName))
+      /**
+       * @implements IEncodable
+       */
+      class CustomKeyValue {
+        /**
+         * @param {string} v
+         */
+        constructor (v) {
+          this.v = v
+        }
+
+        /**
+         * @param {encoding.Encoder} encoder
+         */
+        encode (encoder) {
+          encoding.writeVarString(encoder, this.v)
+        }
+
+        /**
+         * @param {decoding.Decoder} decoder
+         * @return {CustomKeyValue}
+         */
+        static decode (decoder) {
+          return new this(decoding.readVarString(decoder))
+        }
+      }
+      const db = await iso.openDB(getDbName(tc.testName), {
+        tables: {
+          custom: {
+            key: CustomKeyValue,
+            value: CustomKeyValue
+          }
+        }
+      })
+      await db.transact(async tr => {
+        t.assert((await tr.tables.custom.get(new CustomKeyValue('key'))) === null)
+        tr.tables.custom.set(new CustomKeyValue('key'), new CustomKeyValue('value'))
+        t.assert(/** @type {CustomKeyValue} */ (await tr.tables.custom.get(new CustomKeyValue('key'))).v === 'value')
       })
     })
   }
@@ -601,6 +705,10 @@ export const testObjectStorage = async tc => {
       tr.objects.obj1.remove('val1')
       const res3 = await tr.objects.obj1.get('val1')
       t.assert(res3 === null)
+      // @ts-ignore
+      await t.failsAsync(() => tr.objects.obj1.set('key3', new iso.StringValue('test')))
+      // @ts-ignore
+      await t.failsAsync(() => tr.objects.obj1.set('key1', new iso.StringValue('test')))
     })
   }
 }

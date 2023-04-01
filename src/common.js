@@ -168,18 +168,18 @@ export class StringKey {
   }
 
   /**
-   * @param {encoding.Encoder} _encoder
+   * @param {encoding.Encoder} encoder
    */
-  encode (_encoder) {
-    error.methodUnimplemented()
+  encode (encoder) {
+    encoding.writeVarString(encoder, this.v)
   }
 
   /**
-   * @param {decoding.Decoder} _decoder
+   * @param {decoding.Decoder} decoder
    * @return {IEncodable}
    */
-  static decode (_decoder) {
-    error.methodUnimplemented()
+  static decode (decoder) {
+    return new this(decoding.readVarString(decoder))
   }
 }
 
@@ -202,11 +202,11 @@ export class StringValue {
   }
 
   /**
-   * @param {decoding.Decoder} _decoder
+   * @param {decoding.Decoder} decoder
    * @return {IEncodable}
    */
-  static decode (_decoder) {
-    return new this(decoding.readVarString(_decoder))
+  static decode (decoder) {
+    return new this(decoding.readVarString(decoder))
   }
 }
 

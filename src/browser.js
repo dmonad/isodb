@@ -51,10 +51,13 @@ const encodeKey = key => {
 const getKeyDecoder = (keytype) => {
   switch (/** @type {any} */ (keytype)) {
     case common.AutoKey:
+      /* c8 ignore next */
       return id => id ? new common.AutoKey(id) : null
     case common.StringKey:
+      /* c8 ignore next */
       return id => id ? new common.StringKey(id) : null
     default:
+      /* c8 ignore next */
       return id => id ? keytype.decode(decoding.createDecoder(buffer.createUint8ArrayFromArrayBuffer(id))) : null
   }
 }
@@ -122,6 +125,7 @@ class Table {
     const encodedKey = encodeKey(key)
     if (!object.isEmpty(this.indexes)) {
       idb.get(this.store, encodedKey).then(v => {
+        /* c8 ignore next */
         const value = v == null ? null : this.V.decode(decoding.createDecoder(/** @type {Uint8Array} */ (v)))
         for (const indexname in this.indexes) {
           const indexTable = this.indexes[indexname]
@@ -151,6 +155,7 @@ class Table {
         key: /** @type {KEY} */ (this._dK(key)),
         fkey: undefined
       })
+      /* c8 ignore next */
       if (stopped || (range.limit != null && ++cnt >= range.limit)) {
         return false
       }
@@ -221,6 +226,7 @@ class Table {
      */
     const K = /** @type {any} */ (this.K)
     if (K !== common.AutoKey) {
+      /* c8 ignore next 2 */
       throw error.create('Expected key to be an AutoKey')
     }
     if (value.constructor !== this.V) {

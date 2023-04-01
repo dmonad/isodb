@@ -39,10 +39,10 @@ const toNativeRange = range => {
    */
   const lrange = {}
   if (range.start) {
-    lrange.start = encodeKey(range.start, range.startExclusive === true)
+    lrange.start = encodeKey(range.start, range.startExclusive === true && !range.reverse)
   }
   if (range.end) {
-    lrange.end = encodeKey(range.end, range.endExclusive !== true)
+    lrange.end = encodeKey(range.end, range.endExclusive !== !range.reverse)
   }
   if (range.reverse) {
     lrange.reverse = range.reverse
