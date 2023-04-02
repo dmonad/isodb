@@ -67,16 +67,21 @@ const getKeyDecoder = (keytype) => {
  * @param {common.RangeOption<KEY>} range
  */
 const toNativeRange = (range) => {
+  const reverse = range.reverse === true
   const startExclusive = range.startExclusive === true
   const endExclusive = range.endExclusive === true
-  if (range.start && range.end) {
-    return idb.createIDBKeyRangeBound(encodeKey(range.start), encodeKey(range.end), startExclusive, endExclusive)
+  const lowerExclusive = reverse ? endExclusive : startExclusive
+  const upperExclusive = reverse ? startExclusive : endExclusive
+  const lower = reverse ? range.end : range.start
+  const upper = reverse ? range.start : range.end
+  if (lower && upper) {
+    return idb.createIDBKeyRangeBound(encodeKey(lower), encodeKey(upper), lowerExclusive, upperExclusive)
   }
-  if (range.start) {
-    return idb.createIDBKeyRangeLowerBound(encodeKey(range.start), startExclusive)
+  if (lower) {
+    return idb.createIDBKeyRangeLowerBound(encodeKey(lower), lowerExclusive)
   }
-  if (range.end) {
-    return idb.createIDBKeyRangeUpperBound(encodeKey(range.end), endExclusive)
+  if (upper) {
+    return idb.createIDBKeyRangeUpperBound(encodeKey(upper), upperExclusive)
   }
   return null
 }

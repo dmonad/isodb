@@ -39,10 +39,10 @@ const toNativeRange = range => {
    */
   const lrange = {}
   if (range.start) {
-    lrange.start = encodeKey(range.start, range.startExclusive === true && !range.reverse)
+    lrange.start = encodeKey(range.start, range.startExclusive === true ? (range.reverse ? -1 : 1) : 0)
   }
   if (range.end) {
-    lrange.end = encodeKey(range.end, range.endExclusive !== !range.reverse)
+    lrange.end = encodeKey(range.end, range.endExclusive === true ? 0 : (range.reverse ? -1 : 1))
   }
   if (range.reverse) {
     lrange.reverse = range.reverse
@@ -76,22 +76,36 @@ const encodeValue = value => {
 
 /**
  * @param {common.IEncodable} key
- * @param {boolean} increment
+ * @param {1|0|-1} increment
  * @return {Uint8Array|string|number}
  */
 const encodeKey = (key, increment) => {
   switch (key.constructor) {
     case common.AutoKey:
-      return /** @type {common.AutoKey} */ (key).v + (increment ? 1 : 0)
-    case common.StringKey:
-      return /** @type {common.StringKey} */ (key).v + (increment ? ' ' : '')
+      return /** @type {common.AutoKey} */ (key).v + increment
+    case common.StringKey: {
+      const k = /** @type {common.StringKey} */ (key).v + (increment === 1 ? ' ' : '')
+      if (increment < 0 && k.length > 0) {
+        return k.slice(0, k.length - 1) + String.fromCharCode(k.charCodeAt(k.length - 1) - 1)
+      }
+      return k
+    }
   }
   const encoder = encoding.createEncoder()
   key.encode(encoder)
   if (increment) {
     encoding.writeUint8(encoder, 0)
   }
-  return encoding.toUint8Array(encoder)
+  const buf = encoding.toUint8Array(encoder)
+  if (increment < 0) {
+    const lastPos = buf.byteLength - 1
+    const lastByte = buf[lastPos]
+    if (lastByte === 0) {
+      return buf.slice(0, lastPos)
+    }
+    buf[lastByte]--
+  }
+  return buf
 }
 
 /**
