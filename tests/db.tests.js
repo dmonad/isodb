@@ -23,13 +23,40 @@ export const addIsoImpls = iso => {
 const getDbName = testname => '.test_dbs/' + testname
 
 /**
+ * @implements IEncodable
+ */
+class CustomKeyValue {
+  /**
+   * @param {string} v
+   */
+  constructor (v) {
+    this.v = v
+  }
+
+  /**
+   * @param {encoding.Encoder} encoder
+   */
+  encode (encoder) {
+    encoding.writeVarString(encoder, this.v)
+  }
+
+  /**
+   * @param {decoding.Decoder} decoder
+   * @return {CustomKeyValue}
+   */
+  static decode (decoder) {
+    return new this(decoding.readVarString(decoder))
+  }
+}
+
+/**
  * @param {t.TestCase} tc
  */
 export const testIterator = async tc => {
   for (const iso of isoImpls) {
     await t.groupAsync(iso.name, async () => {
       await iso.deleteDB(getDbName(tc.testName))
-      const def = { tables: { strings: { key: iso.StringKey, value: iso.AnyValue }, auto: { key: iso.AutoKey, value: iso.AnyValue } } }
+      const def = { tables: { strings: { key: iso.StringKey, value: iso.AnyValue }, auto: { key: iso.AutoKey, value: iso.AnyValue }, bin: { key: CustomKeyValue, value: iso.AnyValue } } }
       const db = await iso.openDB(getDbName(tc.testName), def)
       db.transact(tr => {
         for (let i = 1; i < 30; i++) {
@@ -37,6 +64,9 @@ export const testIterator = async tc => {
         }
         for (let i = 1; i < 9; i++) {
           tr.tables.strings.set(new iso.StringKey(i + ''), new iso.AnyValue(i + ''))
+        }
+        for (let i = 1; i < 9; i++) {
+          tr.tables.bin.set(new CustomKeyValue(i + ''), new iso.AnyValue(i + ''))
         }
       })
       await db.transactReadonly(async tr => {
@@ -213,6 +243,61 @@ export const testIterator = async tc => {
           read.push(k.v)
         })
         t.assert(read.length === 5 && read.every((v, index) => v === '' + (5 - index)))
+      })
+      // Custom Keys
+      await db.transactReadonly(async tr => {
+        /**
+         * @type {Array<string>}
+         */
+        const read = []
+        await tr.tables.bin.iterate({ start: new CustomKeyValue('6'), startExclusive: true, limit: 5, reverse: true }, (cursor) => {
+          const k = cursor.key
+          const v = cursor.value
+          t.compare(k.v, v.v)
+          read.push(k.v)
+        })
+        t.assert(read.length === 5 && read.every((v, index) => v === '' + (5 - index)))
+      })
+      await db.transactReadonly(async tr => {
+        /**
+         * @type {Array<string>}
+         */
+        const read = []
+        await tr.tables.bin.iterate({ start: new CustomKeyValue('6'), startExclusive: false, end: new CustomKeyValue('7'), endExclusive: false }, (cursor) => {
+          const k = cursor.key
+          const v = cursor.value
+          t.compare(k.v, v.v)
+          read.push(k.v)
+        })
+        t.assert(read.length === 2 && read.every((v, index) => v === '' + (index + 6)))
+      })
+      await db.transact(async tr => {
+        tr.tables.bin.set(new CustomKeyValue(''), new iso.AnyValue(''))
+        /**
+         * @type {Array<string>}
+         */
+        const read = []
+        await tr.tables.bin.iterate({ start: new CustomKeyValue(''), startExclusive: false, end: new CustomKeyValue(''), endExclusive: false }, (cursor) => {
+          const k = cursor.key
+          const v = cursor.value
+          t.compare(k.v, v.v)
+          read.push(k.v)
+        })
+        t.assert(read.length === 1 && read.every((v, _index) => v === ''))
+      })
+      await db.transact(async tr => {
+        tr.tables.bin.set(new CustomKeyValue(''), new iso.AnyValue(''))
+        /**
+         * @type {Array<string>}
+         */
+        const read = []
+        await tr.tables.bin.iterate({ start: new CustomKeyValue(''), startExclusive: false, end: new CustomKeyValue(''), endExclusive: false, reverse: true }, (cursor) => {
+          const k = cursor.key
+          const v = cursor.value
+          t.compare(k.v, v.v)
+          read.push(k.v)
+        })
+        t.assert(read.length === 1 && read.every((v, _index) => v === ''))
       })
     })
   }
@@ -641,32 +726,6 @@ export const testCustomKeyValue = async tc => {
   for (const iso of isoImpls) {
     await t.groupAsync(iso.name, async () => {
       await iso.deleteDB(getDbName(tc.testName))
-      /**
-       * @implements IEncodable
-       */
-      class CustomKeyValue {
-        /**
-         * @param {string} v
-         */
-        constructor (v) {
-          this.v = v
-        }
-
-        /**
-         * @param {encoding.Encoder} encoder
-         */
-        encode (encoder) {
-          encoding.writeVarString(encoder, this.v)
-        }
-
-        /**
-         * @param {decoding.Decoder} decoder
-         * @return {CustomKeyValue}
-         */
-        static decode (decoder) {
-          return new this(decoding.readVarString(decoder))
-        }
-      }
       const db = await iso.openDB(getDbName(tc.testName), {
         tables: {
           custom: {

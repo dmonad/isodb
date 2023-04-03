@@ -93,7 +93,7 @@ const encodeKey = (key, increment) => {
   }
   const encoder = encoding.createEncoder()
   key.encode(encoder)
-  if (increment) {
+  if (increment > 0) {
     encoding.writeUint8(encoder, 0)
   }
   const buf = encoding.toUint8Array(encoder)
@@ -103,7 +103,7 @@ const encodeKey = (key, increment) => {
     if (lastByte === 0) {
       return buf.slice(0, lastPos)
     }
-    buf[lastByte]--
+    buf[lastPos]--
   }
   return buf
 }
@@ -115,10 +115,13 @@ const encodeKey = (key, increment) => {
 const getKeyDecoder = (keytype) => {
   switch (/** @type {any} */ (keytype)) {
     case common.AutoKey:
+      /* c8 ignore next */
       return id => id == null ? null : new common.AutoKey(id)
     case common.StringKey:
+      /* c8 ignore next */
       return id => id == null ? null : new common.StringKey(id)
     default:
+      /* c8 ignore next */
       return id => id == null ? null : keytype.decode(decoding.createDecoder(id))
   }
 }
@@ -153,7 +156,7 @@ class Table {
    * @return {Promise<VALUE|null>}
    */
   async get (key) {
-    const buf = this.t.getBinary(encodeKey(key, false)) // @todo experiment with getBinaryFast
+    const buf = this.t.getBinary(encodeKey(key, 0)) // @todo experiment with getBinaryFast
     return buf == null ? null : /** @type {VALUE} */ (this.V.decode(decoding.createDecoder(buf)))
   }
 
@@ -224,7 +227,7 @@ class Table {
     if (value.constructor !== this.V || key.constructor !== this.K) {
       throw common.unexpectedContentTypeException
     }
-    this.t.put(encodeKey(key, false), encodeValue(value))
+    this.t.put(encodeKey(key, 0), encodeValue(value))
     for (const indexname in this.indexes) {
       const indexTable = this.indexes[indexname]
       indexTable.t.set(indexTable.indexDef.mapper(key, value), key)
@@ -261,9 +264,10 @@ class Table {
    * @param {KEY} key
    */
   remove (key) {
-    const encodedKey = encodeKey(key, false)
+    const encodedKey = encodeKey(key, 0)
     if (!object.isEmpty(this.indexes)) {
       const buf = this.t.getBinary(encodedKey) // @todo experiment with getBinaryFast (doesn't work because readVarUint8 doesn't copy)
+      /* c8 ignore next */
       const value = buf ? /** @type {VALUE} */ (this.V.decode(decoding.createDecoder(buf))) : null
       for (const indexname in this.indexes) {
         const indexTable = this.indexes[indexname]
