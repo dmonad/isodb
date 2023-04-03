@@ -198,6 +198,7 @@ export const testIterator = async tc => {
         await tr.tables.strings.iterate({ start: new iso.StringKey('1'), end: new iso.StringKey('3') }, (cursor) => {
           const k = cursor.key
           const v = cursor.value
+          /* c8 ignore next 2 */
           t.compare(k.v, v.v)
           read.push(k.v)
         })
@@ -298,6 +299,39 @@ export const testIterator = async tc => {
           read.push(k.v)
         })
         t.assert(read.length === 1 && read.every((v, _index) => v === ''))
+      })
+    })
+  }
+}
+
+/**
+ * @param {t.TestCase} tc
+ */
+export const testUintKey = async tc => {
+  for (const iso of isoImpls) {
+    await t.groupAsync(iso.name, async () => {
+      await iso.deleteDB(getDbName(tc.testName))
+      const def = { tables: { uint: { key: iso.Uint32Key, value: iso.AnyValue } } }
+      const db = await iso.openDB(getDbName(tc.testName), def)
+      const N = 1000
+      db.transact(tr => {
+        for (let i = 0; i < N; i++) {
+          tr.tables.uint.set(new iso.Uint32Key(i), new iso.AnyValue(i))
+        }
+      })
+      // check that this is ordered correctly
+      await db.transactReadonly(async tr => {
+        /**
+         * @type {Array<number>}
+         */
+        const read = []
+        await tr.tables.uint.iterate({}, (cursor) => {
+          const k = cursor.key
+          const v = cursor.value
+          t.compare(k.v, v.v)
+          read.push(k.v)
+        })
+        t.assert(read.length === N && read.every((v, index) => v === index))
       })
     })
   }

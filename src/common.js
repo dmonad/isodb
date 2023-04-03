@@ -20,6 +20,7 @@ import * as rsa from 'lib0/crypto/rsa-oaep'
  * @typedef {IAny[]} _IAnyArray
  */
 export class IEncodable {
+  /* c8 ignore next 6 */
   /**
    * @param {encoding.Encoder} _encoder
    */
@@ -27,6 +28,7 @@ export class IEncodable {
     error.methodUnimplemented()
   }
 
+  /* c8 ignore next 7 */
   /**
    * @param {decoding.Decoder} _decoder
    * @return {IEncodable}
@@ -75,6 +77,7 @@ export class CryptoKeyValue {
     this.key = key
   }
 
+  /* c8 ignore next 8 */
   /**
    * @param {encoding.Encoder} _encoder
    */
@@ -98,6 +101,7 @@ export class CryptoKeyValue {
       case 'oct':
         return new CryptoKeyValue(await aes.importKey(jwk))
     }
+    /* c8 ignore next */
     error.unexpectedCase()
   }
 }
@@ -117,7 +121,7 @@ export class AutoKey {
    * @param {encoding.Encoder} encoder
    */
   encode (encoder) {
-    encoding.writeUint32(encoder, this.v)
+    encoding.writeUint32BigEndian(encoder, this.v)
   }
 
   /**
@@ -125,14 +129,14 @@ export class AutoKey {
    * @return {IEncodable}
    */
   static decode (decoder) {
-    return new this(decoding.readUint32(decoder))
+    return new this(decoding.readUint32BigEndian(decoder))
   }
 }
 
 /**
  * @implements IEncodable
  */
-export class UintKey {
+export class Uint32Key {
   /**
    * @param {number} v
    */
@@ -144,7 +148,7 @@ export class UintKey {
    * @param {encoding.Encoder} encoder
    */
   encode (encoder) {
-    encoding.writeVarUint(encoder, this.v)
+    encoding.writeUint32BigEndian(encoder, this.v)
   }
 
   /**
@@ -152,7 +156,7 @@ export class UintKey {
    * @return {IEncodable}
    */
   static decode (decoder) {
-    return new this(decoding.readUint32(decoder))
+    return new this(decoding.readUint32BigEndian(decoder))
   }
 }
 
@@ -267,6 +271,7 @@ export class StringValue {
  * @property {function():void} stop
  */
 
+/* c8 ignore start */
 /**
  * @template {IEncodable} KEY
  * @template {IEncodable} VALUE
@@ -324,7 +329,9 @@ export class ITableReadonly {
     error.methodUnimplemented()
   }
 }
+/* c8 ignore stop */
 
+/* c8 ignore start */
 /**
  * @template {IEncodable} KEY
  * @template {IEncodable} VALUE
@@ -360,6 +367,7 @@ export class ITable extends ITableReadonly {
     error.methodUnimplemented()
   }
 }
+/* c8 ignore stop */
 
 /**
  * @todo move to utils. dont export via common
@@ -442,6 +450,7 @@ export class IndexedTable {
   }
 }
 
+/* c8 ignore start */
 /**
  * @template {IObjectDef<any>} ODef
  *
@@ -457,7 +466,9 @@ export class IObjectReadonly {
     error.methodUnimplemented()
   }
 }
+/* c8 ignore stop */
 
+/* c8 ignore start */
 /**
  * @template {IObjectDef<any>} ODef
  *
@@ -482,7 +493,9 @@ export class IObject extends IObjectReadonly {
     error.methodUnimplemented()
   }
 }
+/* c8 ignore stop */
 
+/* c8 ignore start */
 /**
  * @template {IDbDef} DEF
  *
@@ -503,7 +516,9 @@ export class ITransaction {
     this.objects = /** @type {any} */ ({})
   }
 }
+/* c8 ignore stop */
 
+/* c8 ignore start */
 /**
  * @template {IDbDef} DEF
  *
@@ -520,7 +535,9 @@ export class ITransactionReadonly {
     this.tables = /** @type {any} */ ({})
   }
 }
+/* c8 ignore stop */
 
+/* c8 ignore start */
 /**
  * @template {IDbDef} DEF
  *
@@ -552,6 +569,7 @@ export class IDB {
     error.methodUnimplemented()
   }
 }
+/* c8 ignore stop */
 
 /**
  * Note that inheritance is not supported by intention.
