@@ -316,7 +316,11 @@ export const testUintKey = async tc => {
       const N = 1000
       db.transact(tr => {
         for (let i = 0; i < N; i++) {
-          tr.tables.uint.set(new iso.Uint32Key(i), new iso.AnyValue(i))
+          if (i % 2) {
+            tr.tables.uint.set(new iso.Uint32Key(i), new iso.AnyValue(i))
+          } else {
+            tr.tables.uint.set(i, i)
+          }
         }
       })
       // check that this is ordered correctly
@@ -662,38 +666,6 @@ export const testIndexing = async tc => {
         t.assert((await tr.tables.named.indexes.reversed.get(new iso.StringKey('key'))) === null)
         tr.tables.named.remove(new iso.StringKey('key'))
         t.assert((await tr.tables.named.indexes.reversed.get(new iso.StringKey('yek'))) === null)
-      })
-    })
-  }
-}
-
-/**
- * @param {t.TestCase} tc
- */
-export const testInsertLogic = async tc => {
-  for (const iso of isoImpls) {
-    await iso.deleteDB(getDbName(tc.testName))
-    const db = await iso.openDB(getDbName(tc.testName), {
-      tables: {
-        auto: {
-          key: iso.AutoKey,
-          value: iso.AnyValue
-        }
-      }
-    })
-    await db.transact(async tr => {
-      /**
-       * @extends iso.AnyValue<any>
-       */
-      class MyValue extends iso.AnyValue {}
-      await t.promiseRejected(() =>
-        tr.tables.auto.add(new MyValue('string'))
-      )
-      t.fails(() => {
-        tr.tables.auto.set(new iso.AutoKey(0), new MyValue('string'))
-      })
-      t.fails(() => {
-        tr.tables.auto.set(/** @type {any} */ (new iso.StringKey('dtrn')), new iso.AnyValue('string'))
       })
     })
   }

@@ -15,12 +15,17 @@ import * as rsa from 'lib0/crypto/rsa-oaep'
  * @typedef {string|number|bigint|boolean|_IAnyArray|Uint8Array|{[key: string]: IAny}|null|undefined} IAny
  */
 
+/* c8 ignore start */
 /**
  * @interface
  * @typedef {IAny[]} _IAnyArray
  */
 export class IEncodable {
-  /* c8 ignore next 6 */
+  /**
+   * @param {any} _v
+   */
+  constructor (_v) { } // eslint-disable-line
+
   /**
    * @param {encoding.Encoder} _encoder
    */
@@ -28,7 +33,6 @@ export class IEncodable {
     error.methodUnimplemented()
   }
 
-  /* c8 ignore next 7 */
   /**
    * @param {decoding.Decoder} _decoder
    * @return {IEncodable}
@@ -37,6 +41,7 @@ export class IEncodable {
     error.methodUnimplemented()
   }
 }
+/* c8 ignore stop */
 
 /**
  * @template {IAny} V
@@ -215,13 +220,13 @@ export class StringValue {
 }
 
 /**
- * @template {IEncodable} KEY
- * @template {IEncodable} VALUE
+ * @template {typeof IEncodable} KEY
+ * @template {typeof IEncodable} VALUE
  * @template {typeof IEncodable} MKEY
  *
  * @typedef {Object} ITableIndex
  * @property {MKEY} ITableIndex.key
- * @property {function(KEY,VALUE):InstanceType<MKEY>} ITableIndex.mapper
+ * @property {function(InstanceType<KEY>,InstanceType<VALUE>):InstanceType<MKEY>} ITableIndex.mapper
  */
 
 /**
@@ -231,7 +236,7 @@ export class StringValue {
  * @typedef {Object} ITableDef
  * @property {KEY} ITableDef.key
  * @property {VALUE} ITableDef.value
- * @property {{[key: string]: ITableIndex<InstanceType<KEY>,InstanceType<VALUE>,any>}} [ITableDef.indexes]
+ * @property {{[key: string]: ITableIndex<KEY,VALUE,any>}} [ITableDef.indexes]
  */
 
 /**
@@ -273,8 +278,8 @@ export class StringValue {
 
 /* c8 ignore start */
 /**
- * @template {IEncodable} KEY
- * @template {IEncodable} VALUE
+ * @template {typeof IEncodable} KEY
+ * @template {typeof IEncodable} VALUE
  * @template {{[key: string]: ITableIndex<any, any, any>}} INDEX
  * @template {IEncodable | undefined} FKEY
  *
@@ -283,46 +288,46 @@ export class StringValue {
 export class ITableReadonly {
   constructor () {
     /**
-     * @type {{ [Indexname in keyof INDEX]: ITableReadonly<InstanceType<INDEX[Indexname]["key"]>, VALUE, {}, KEY> }}
+     * @type {{ [Indexname in keyof INDEX]: ITableReadonly<INDEX[Indexname]["key"], VALUE, {}, InstanceType<KEY>> }}
      */
     this.indexes = /** @type {any} */ ({})
   }
 
   /**
-   * @param {KEY} _key
-   * @return {Promise<VALUE|null>}
+   * @param {InstanceType<KEY>|ConstructorParameters<KEY>[0]} _key
+   * @return {Promise<InstanceType<VALUE>|null>}
    */
   get (_key) {
     error.methodUnimplemented()
   }
 
   /**
-   * @param {RangeOption<KEY>} [_range]
-   * @return {Promise<Array<{ key: KEY, value: VALUE, fkey: FKEY }>>}
+   * @param {RangeOption<InstanceType<KEY>>} [_range]
+   * @return {Promise<Array<{ key: InstanceType<KEY>, value: InstanceType<VALUE>, fkey: FKEY }>>}
    */
   getEntries (_range) {
     error.methodUnimplemented()
   }
 
   /**
-   * @param {RangeOption<KEY>} [_range]
-   * @return {Promise<Array<VALUE>>}
+   * @param {RangeOption<InstanceType<KEY>>} [_range]
+   * @return {Promise<Array<InstanceType<VALUE>>>}
    */
   getValues (_range) {
     error.methodUnimplemented()
   }
 
   /**
-   * @param {RangeOption<KEY>} [_range]
-   * @return {Promise<Array<KEY>>}
+   * @param {RangeOption<InstanceType<KEY>>} [_range]
+   * @return {Promise<Array<InstanceType<KEY>>>}
    */
   getKeys (_range) {
     error.methodUnimplemented()
   }
 
   /**
-   * @param {RangeOption<KEY>} _range
-   * @param {function(ICursor<KEY,VALUE,FKEY>):void|Promise<void>} _f
+   * @param {RangeOption<InstanceType<KEY>>} _range
+   * @param {function(ICursor<InstanceType<KEY>,InstanceType<VALUE>,FKEY>):void|Promise<void>} _f
    * @return {Promise<void>}
    */
   iterate (_range, _f) {
@@ -333,8 +338,8 @@ export class ITableReadonly {
 
 /* c8 ignore start */
 /**
- * @template {IEncodable} KEY
- * @template {IEncodable} VALUE
+ * @template {typeof IEncodable} KEY
+ * @template {typeof IEncodable} VALUE
  * @template {{[key: string]: ITableIndex<KEY,VALUE,any>}} INDEX
  * @template {IEncodable|undefined} FKEY
  *
@@ -343,8 +348,8 @@ export class ITableReadonly {
  */
 export class ITable extends ITableReadonly {
   /**
-   * @param {KEY} _key
-   * @param {VALUE} _value
+   * @param {InstanceType<KEY>|ConstructorParameters<KEY>[0]} _key
+   * @param {InstanceType<VALUE>|ConstructorParameters<VALUE>[0]} _value
    */
   set (_key, _value) {
     error.methodUnimplemented()
@@ -353,15 +358,15 @@ export class ITable extends ITableReadonly {
   /**
    * Only works with AutoKey
    *
-   * @param {VALUE} _value
-   * @return {Promise<KEY>}
+   * @param {InstanceType<VALUE>|ConstructorParameters<VALUE>[0]} _value
+   * @return {Promise<InstanceType<KEY>>}
    */
   add (_value) {
     error.methodUnimplemented()
   }
 
   /**
-   * @param {KEY} _key
+   * @param {InstanceType<KEY>|ConstructorParameters<KEY>[0]} _key
    */
   remove (_key) {
     error.methodUnimplemented()
@@ -373,12 +378,12 @@ export class ITable extends ITableReadonly {
  * @todo move to utils. dont export via common
  * @todo rename MKEY to FKEY and change the order
  *
- * @template {IEncodable} KEY
- * @template {IEncodable} VALUE
- * @template {IEncodable} MKEY
+ * @template {typeof IEncodable} KEY
+ * @template {typeof IEncodable} VALUE
+ * @template {typeof IEncodable} MKEY
  * @template {{[key: string]: ITableIndex<any, any, any>}} INDEX
  *
- * @implements ITableReadonly<MKEY,VALUE,INDEX,KEY>
+ * @implements ITableReadonly<MKEY,VALUE,INDEX,InstanceType<KEY>>
  */
 export class IndexedTable {
   /**
@@ -391,14 +396,14 @@ export class IndexedTable {
     this.source = source
     this.indexDef = def
     /**
-     * @type {{ [Indexname in keyof INDEX]: ITableReadonly<InstanceType<INDEX[Indexname]["key"]>,VALUE,{},MKEY> }}
+     * @type {{ [Indexname in keyof INDEX]: ITableReadonly<INDEX[Indexname]["key"],VALUE,{},InstanceType<MKEY>> }}
      */
     this.indexes = /** @type {any} */ ({})
   }
 
   /**
-   * @param {MKEY} mkey
-   * @return {Promise<VALUE|null>}
+   * @param {InstanceType<MKEY>|ConstructorParameters<MKEY>[0]} mkey
+   * @return {Promise<InstanceType<VALUE>|null>}
    */
   async get (mkey) {
     const key = await this.t.get(mkey)
@@ -406,40 +411,40 @@ export class IndexedTable {
   }
 
   /**
-   * @param {RangeOption<MKEY>} range
-   * @return {Promise<Array<{ key: MKEY, value: VALUE, fkey: KEY }>>}
+   * @param {RangeOption<InstanceType<MKEY>>} range
+   * @return {Promise<Array<{ key: InstanceType<MKEY>, value: InstanceType<VALUE>, fkey: InstanceType<KEY>}>>}
    */
   async getEntries (range) {
     const entries = await this.t.getEntries(range)
-    const vals = await promise.all(entries.map(entry => /** @type {Promise<VALUE>} */ (this.source.get(entry.value))))
+    const vals = await promise.all(entries.map(entry => /** @type {Promise<InstanceType<VALUE>>} */ (this.source.get(entry.value))))
     return entries.map((entry, i) => ({ key: entry.key, value: vals[i], fkey: entry.value }))
   }
 
   /**
-   * @param {RangeOption<MKEY>} range
-   * @return {Promise<Array<VALUE>>}
+   * @param {RangeOption<InstanceType<MKEY>>} range
+   * @return {Promise<Array<InstanceType<VALUE>>>}
    */
   async getValues (range) {
     const values = await this.t.getValues(range)
-    return await promise.all(values.map(value => /** @type {Promise<VALUE>} */ (this.source.get(value))))
+    return await promise.all(values.map(value => /** @type {Promise<InstanceType<VALUE>>} */ (this.source.get(value))))
   }
 
   /**
-   * @param {RangeOption<MKEY>} range
-   * @return {Promise<Array<MKEY>>}
+   * @param {RangeOption<InstanceType<MKEY>>} range
+   * @return {Promise<Array<InstanceType<MKEY>>>}
    */
   getKeys (range) {
     return this.t.getKeys(range)
   }
 
   /**
-   * @param {RangeOption<MKEY>} range
-   * @param {function(ICursor<MKEY,VALUE,KEY>):void} f
+   * @param {RangeOption<InstanceType<MKEY>>} range
+   * @param {function(ICursor<InstanceType<MKEY>,InstanceType<VALUE>,InstanceType<KEY>>):void} f
    * @return {Promise<void>}
    */
   iterate (range, f) {
     return this.t.iterate(range, async cursor => {
-      const value = /** @type {VALUE} */ (await this.source.get(cursor.value))
+      const value = /** @type {InstanceType<VALUE>} */ (await this.source.get(cursor.value))
       f({
         key: cursor.key,
         value,
@@ -507,7 +512,7 @@ export class ITransaction {
    */
   constructor (_db) {
     /**
-     * @type {{ [Tablename in keyof DEF["tables"]]: ITable<InstanceType<NonNullable<DEF["tables"]>[Tablename]["key"]>,InstanceType<NonNullable<DEF["tables"]>[Tablename]["value"]>,Defined<NonNullable<DEF["tables"]>[Tablename]["indexes"]>,undefined> }}
+     * @type {{ [Tablename in keyof DEF["tables"]]: ITable<NonNullable<DEF["tables"]>[Tablename]["key"],NonNullable<DEF["tables"]>[Tablename]["value"],Defined<NonNullable<DEF["tables"]>[Tablename]["indexes"]>,undefined> }}
      */
     this.tables = /** @type {any} */ ({})
     /**
@@ -530,7 +535,7 @@ export class ITransactionReadonly {
    */
   constructor (_db) {
     /**
-     * @type {{ [Tablename in keyof DEF["tables"]]:ITableReadonly<InstanceType<NonNullable<DEF["tables"]>[Tablename]["key"]>,InstanceType<NonNullable<DEF["tables"]>[Tablename]["value"]>,Defined<NonNullable<DEF["tables"]>[Tablename]["indexes"]>,undefined> }}
+     * @type {{ [Tablename in keyof DEF["tables"]]:ITableReadonly<NonNullable<DEF["tables"]>[Tablename]["key"],NonNullable<DEF["tables"]>[Tablename]["value"],Defined<NonNullable<DEF["tables"]>[Tablename]["indexes"]>,undefined> }}
      */
     this.tables = /** @type {any} */ ({})
   }

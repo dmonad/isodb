@@ -12,10 +12,14 @@ export const name = 'isodb-indexeddb'
 export * from './common.js'
 
 /**
+ * @param {typeof common.IEncodable} V
  * @param {common.IEncodable} value
  * @return {Uint8Array | CryptoKey}
  */
-const encodeValue = value => {
+const encodeValue = (V, value) => {
+  if (value == null || /** @type {any} */ (value).constructor !== V) {
+    value = new V(value)
+  }
   const encoder = encoding.createEncoder()
   switch (value.constructor) {
     case common.CryptoKeyValue: {
@@ -29,10 +33,14 @@ const encodeValue = value => {
 }
 
 /**
+ * @param {typeof common.IEncodable} K
  * @param {common.IEncodable} key
  * @return {Uint8Array|string|number}
  */
-const encodeKey = key => {
+const encodeKey = (K, key) => {
+  if (key == null || /** @type {any} */ (key).constructor !== K) {
+    key = new K(key)
+  }
   switch (key.constructor) {
     case common.AutoKey:
       return /** @type {common.AutoKey} */ (key).v
@@ -64,9 +72,10 @@ const getKeyDecoder = (keytype) => {
 
 /**
  * @template {common.IEncodable} KEY
+ * @param {typeof common.IEncodable} K
  * @param {common.RangeOption<KEY>} range
  */
-const toNativeRange = (range) => {
+const toNativeRange = (K, range) => {
   const reverse = range.reverse === true
   const startExclusive = range.startExclusive === true
   const endExclusive = range.endExclusive === true
@@ -75,20 +84,20 @@ const toNativeRange = (range) => {
   const lower = reverse ? range.end : range.start
   const upper = reverse ? range.start : range.end
   if (lower && upper) {
-    return idb.createIDBKeyRangeBound(encodeKey(lower), encodeKey(upper), lowerExclusive, upperExclusive)
+    return idb.createIDBKeyRangeBound(encodeKey(K, lower), encodeKey(K, upper), lowerExclusive, upperExclusive)
   }
   if (lower) {
-    return idb.createIDBKeyRangeLowerBound(encodeKey(lower), lowerExclusive)
+    return idb.createIDBKeyRangeLowerBound(encodeKey(K, lower), lowerExclusive)
   }
   if (upper) {
-    return idb.createIDBKeyRangeUpperBound(encodeKey(upper), upperExclusive)
+    return idb.createIDBKeyRangeUpperBound(encodeKey(K, upper), upperExclusive)
   }
   return null
 }
 
 /**
- * @template {common.IEncodable} KEY
- * @template {common.IEncodable} VALUE
+ * @template {typeof common.IEncodable} KEY
+ * @template {typeof common.IEncodable} VALUE
  * @template {{[key: string]: common.ITableIndex<any, any, any>}} INDEX
  *
  * @implements {common.ITable<KEY,VALUE,INDEX,undefined>}
@@ -96,8 +105,8 @@ const toNativeRange = (range) => {
 class Table {
   /**
    * @param {IDBObjectStore} store
-   * @param {typeof common.IEncodable} K
-   * @param {typeof common.IEncodable} V
+   * @param {KEY} K
+   * @param {VALUE} V
    */
   constructor (store, K, V) {
     this.store = store
@@ -112,11 +121,11 @@ class Table {
   }
 
   /**
-   * @param {KEY} key
-   * @return {Promise<VALUE>}
+   * @param {InstanceType<KEY>|ConstructorParameters<KEY>[0]} key
+   * @return {Promise<InstanceType<VALUE>>}
    */
   async get (key) {
-    const v = /** @type {Uint8Array | CryptoKey} */ (await idb.get(this.store, encodeKey(key)))
+    const v = /** @type {Uint8Array | CryptoKey} */ (await idb.get(this.store, encodeKey(this.K, key)))
     if (v && v.constructor !== Uint8Array) { // @todo is there a better way to check for cryptokey?
       return /** @type {any} */ (new common.CryptoKeyValue(/** @type {any} */ (v)))
     }
@@ -124,10 +133,10 @@ class Table {
   }
 
   /**
-   * @param {KEY} key
+   * @param {InstanceType<KEY>|ConstructorParameters<KEY>[0]} key
    */
   remove (key) {
-    const encodedKey = encodeKey(key)
+    const encodedKey = encodeKey(this.K, key)
     if (!object.isEmpty(this.indexes)) {
       idb.get(this.store, encodedKey).then(v => {
         /* c8 ignore next */
@@ -138,12 +147,12 @@ class Table {
         }
       })
     }
-    idb.del(this.store, encodeKey(key))
+    idb.del(this.store, encodeKey(this.K, key))
   }
 
   /**
-   * @param {common.RangeOption<KEY>} range
-   * @param {function(common.ICursor<KEY,VALUE,undefined>):void|Promise<void>} f
+   * @param {common.RangeOption<InstanceType<KEY>>} range
+   * @param {function(common.ICursor<InstanceType<KEY>,InstanceType<VALUE>,undefined>):void|Promise<void>} f
    * @return {Promise<void>}
    */
   async iterate (range, f) {
@@ -152,12 +161,12 @@ class Table {
     const stop = () => {
       stopped = true
     }
-    const lrange = toNativeRange(range)
+    const lrange = toNativeRange(this.K, range)
     await idb.iterate(this.store, lrange, async (value, key) => {
       await f({
         stop,
-        value: /** @type {VALUE} */ (this.V.decode(decoding.createDecoder(value))),
-        key: /** @type {KEY} */ (this._dK(key)),
+        value: /** @type {InstanceType<VALUE>} */ (this.V.decode(decoding.createDecoder(value))),
+        key: /** @type {InstanceType<KEY>} */ (this._dK(key)),
         fkey: undefined
       })
       /* c8 ignore next */
@@ -168,49 +177,46 @@ class Table {
   }
 
   /**
-   * @param {common.RangeOption<KEY>} range
-   * @return {Promise<Array<{ key: KEY, value: VALUE, fkey: undefined }>>}
+   * @param {common.RangeOption<InstanceType<KEY>>} range
+   * @return {Promise<Array<{ key: InstanceType<KEY>, value: InstanceType<VALUE>, fkey: undefined }>>}
    */
   async getEntries (range = {}) {
-    const entries = await idb.getAllKeysValues(this.store, toNativeRange(range) || undefined, range.limit)
+    const entries = await idb.getAllKeysValues(this.store, toNativeRange(this.K, range) || undefined, range.limit)
     return entries.map(entry => ({
-      value: /** @type {VALUE} */ (this.V.decode(decoding.createDecoder(entry.v))),
-      key: /** @type {KEY} */ (this._dK(entry.k)),
+      value: /** @type {InstanceType<VALUE>} */ (this.V.decode(decoding.createDecoder(entry.v))),
+      key: /** @type {InstanceType<KEY>} */ (this._dK(entry.k)),
       fkey: undefined
     }))
   }
 
   /**
-   * @param {common.RangeOption<KEY>} range
-   * @return {Promise<Array<VALUE>>}
+   * @param {common.RangeOption<InstanceType<KEY>>} range
+   * @return {Promise<Array<InstanceType<VALUE>>>}
    */
   async getValues (range = {}) {
-    const values = await idb.getAll(this.store, toNativeRange(range) || undefined, range.limit)
+    const values = await idb.getAll(this.store, toNativeRange(this.K, range) || undefined, range.limit)
     return values.map(value =>
-      /** @type {VALUE} */ (this.V.decode(decoding.createDecoder(value)))
+      /** @type {InstanceType<VALUE>} */ (this.V.decode(decoding.createDecoder(value)))
     )
   }
 
   /**
-   * @param {common.RangeOption<KEY>} range
-   * @return {Promise<Array<KEY>>}
+   * @param {common.RangeOption<InstanceType<KEY>>} range
+   * @return {Promise<Array<InstanceType<KEY>>>}
    */
   async getKeys (range = {}) {
-    const keys = await idb.getAllKeys(this.store, toNativeRange(range) || undefined, range.limit)
+    const keys = await idb.getAllKeys(this.store, toNativeRange(this.K, range) || undefined, range.limit)
     return keys.map(key =>
-      /** @type {KEY} */ (this._dK(key))
+      /** @type {InstanceType<KEY>} */ (this._dK(key))
     )
   }
 
   /**
-   * @param {KEY} key
-   * @param {VALUE} value
+   * @param {InstanceType<KEY>|ConstructorParameters<KEY>[0]} key
+   * @param {InstanceType<VALUE>|ConstructorParameters<VALUE>[0]} value
    */
   set (key, value) {
-    if (value.constructor !== this.V || key.constructor !== this.K) {
-      throw common.unexpectedContentTypeException
-    }
-    idb.put(this.store, /** @type {any} */ (encodeValue(value)), encodeKey(key))
+    idb.put(this.store, /** @type {any} */ (encodeValue(this.V, value)), encodeKey(this.K, key))
     for (const indexname in this.indexes) {
       const indexTable = this.indexes[indexname]
       indexTable.t.set(indexTable.indexDef.mapper(key, value), key)
@@ -222,8 +228,8 @@ class Table {
    * @todo make sure all puts are finished before running the next get or write request
    * This might already be handled everywhere but here.
    *
-   * @param {VALUE} value
-   * @return {Promise<KEY>}
+   * @param {InstanceType<VALUE>|ConstructorParameters<VALUE>[0]} value
+   * @return {Promise<InstanceType<KEY>>}
    */
   async add (value) {
     /**
@@ -234,10 +240,7 @@ class Table {
       /* c8 ignore next 2 */
       throw error.create('Expected key to be an AutoKey')
     }
-    if (value.constructor !== this.V) {
-      throw common.unexpectedContentTypeException
-    }
-    const key = await idb.put(this.store, /** @type {any} */ (encodeValue(value))).then(k => /** @type {any} */ (new K(k)))
+    const key = await idb.put(this.store, /** @type {any} */ (encodeValue(this.V, value))).then(k => /** @type {any} */ (new K(k)))
     for (const indexname in this.indexes) {
       const indexTable = this.indexes[indexname]
       indexTable.t.set(indexTable.indexDef.mapper(key, value), key)
@@ -270,7 +273,7 @@ class Transaction {
     })
     const stores = idb.transact(db.db, dbKeys, readonly ? 'readonly' : 'readwrite')
     /**
-     * @type {{ [Tablename in keyof DEF["tables"]]: common.ITable<InstanceType<NonNullable<DEF["tables"]>[Tablename]["key"]>,InstanceType<NonNullable<DEF["tables"]>[Tablename]["value"]>,common.Defined<NonNullable<DEF["tables"]>[Tablename]["indexes"]>,undefined> }}
+     * @type {{ [Tablename in keyof DEF["tables"]]: common.ITable<NonNullable<DEF["tables"]>[Tablename]["key"],NonNullable<DEF["tables"]>[Tablename]["value"],common.Defined<NonNullable<DEF["tables"]>[Tablename]["indexes"]>,undefined> }}
      */
     this.tables = /** @type {any} */ ({})
     const tables = /** @type {any} */ (this.tables)
@@ -434,7 +437,7 @@ export class ObjectStore {
     if (value.constructor !== this.odef[key]) {
       throw common.unexpectedContentTypeException
     }
-    idb.put(this.store, /** @type {any} */ (encodeValue(value)), /** @type {string} */ (key))
+    idb.put(this.store, /** @type {any} */ (encodeValue(this.odef[key], value)), /** @type {string} */ (key))
   }
 
   /**

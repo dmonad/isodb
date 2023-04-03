@@ -31,18 +31,19 @@ const getLmdbKeyType = keytype => {
 
 /**
  * @template {common.IEncodable} KEY
+ * @param {typeof common.IEncodable} K
  * @param {common.RangeOption<KEY>} range
  */
-const toNativeRange = range => {
+const toNativeRange = (K, range) => {
   /**
    * @type {any}
    */
   const lrange = {}
   if (range.start) {
-    lrange.start = encodeKey(range.start, range.startExclusive === true ? (range.reverse ? -1 : 1) : 0)
+    lrange.start = encodeKey(K, range.start, range.startExclusive === true ? (range.reverse ? -1 : 1) : 0)
   }
   if (range.end) {
-    lrange.end = encodeKey(range.end, range.endExclusive === true ? 0 : (range.reverse ? -1 : 1))
+    lrange.end = encodeKey(K, range.end, range.endExclusive === true ? 0 : (range.reverse ? -1 : 1))
   }
   if (range.reverse) {
     lrange.reverse = range.reverse
@@ -54,9 +55,13 @@ const toNativeRange = range => {
 }
 
 /**
+ * @param {typeof common.IEncodable} V
  * @param {common.IEncodable} value
  */
-const encodeValue = value => {
+const encodeValue = (V, value) => {
+  if (value == null || /** @type {any} */ (value).constructor !== V) {
+    value = new V(value)
+  }
   const encoder = encoding.createEncoder()
   switch (value.constructor) {
     case common.CryptoKeyValue: {
@@ -75,12 +80,16 @@ const encodeValue = value => {
 }
 
 /**
+ * @param {typeof common.IEncodable} K
  * @param {common.IEncodable} key
  * @param {1|0|-1} increment
  * @return {Uint8Array|string|number}
  */
-const encodeKey = (key, increment) => {
-  switch (key.constructor) {
+const encodeKey = (K, key, increment) => {
+  if (key == null || /** @type {any} */ (key).constructor !== K) {
+    key = new K(key)
+  }
+  switch (K) {
     case common.AutoKey:
       return /** @type {common.AutoKey} */ (key).v + increment
     case common.StringKey: {
@@ -127,8 +136,8 @@ const getKeyDecoder = (keytype) => {
 }
 
 /**
- * @template {common.IEncodable} KEY
- * @template {common.IEncodable} VALUE
+ * @template {typeof common.IEncodable} KEY
+ * @template {typeof common.IEncodable} VALUE
  * @template {{[key: string]: common.ITableIndex<any, any, any>}} INDEX
  *
  * @implements common.ITable<KEY,VALUE,INDEX,undefined>
@@ -152,52 +161,52 @@ class Table {
   }
 
   /**
-   * @param {KEY} key
-   * @return {Promise<VALUE|null>}
+   * @param {InstanceType<KEY>|ConstructorParameters<KEY>[0]} key
+   * @return {Promise<InstanceType<VALUE>|null>}
    */
   async get (key) {
-    const buf = this.t.getBinary(encodeKey(key, 0)) // @todo experiment with getBinaryFast
-    return buf == null ? null : /** @type {VALUE} */ (this.V.decode(decoding.createDecoder(buf)))
+    const buf = this.t.getBinary(encodeKey(this.K, key, 0)) // @todo experiment with getBinaryFast
+    return buf == null ? null : /** @type {InstanceType<VALUE>} */ (this.V.decode(decoding.createDecoder(buf)))
   }
 
   /**
    * @todo rename entries
-   * @param {common.RangeOption<KEY>} range
-   * @return {Promise<Array<{ key: KEY, value: VALUE, fkey: undefined }>>}
+   * @param {common.RangeOption<InstanceType<KEY>>} range
+   * @return {Promise<Array<{ key: InstanceType<KEY>, value: InstanceType<VALUE>, fkey: undefined }>>}
    */
   getEntries (range = {}) {
-    return promise.resolveWith(this.t.getRange(toNativeRange(range)).map(entry => ({
-      key: /** @type {KEY} */ (this._dK(entry.key)),
-      value: /** @type {VALUE} */ (this.V.decode(decoding.createDecoder(entry.value))),
+    return promise.resolveWith(this.t.getRange(toNativeRange(this.K, range)).map(entry => ({
+      key: /** @type {InstanceType<KEY>} */ (this._dK(entry.key)),
+      value: /** @type {InstanceType<VALUE>} */ (this.V.decode(decoding.createDecoder(entry.value))),
       fkey: undefined
     })).asArray)
   }
 
   /**
    * @todo rename entries
-   * @param {common.RangeOption<KEY>} range
-   * @return {Promise<Array<KEY>>}
+   * @param {common.RangeOption<InstanceType<KEY>>} range
+   * @return {Promise<Array<InstanceType<KEY>>>}
    */
   getKeys (range = {}) {
-    return promise.resolveWith(this.t.getRange(toNativeRange(range)).map(entry =>
-      /** @type {KEY} */ (this._dK(entry.key))
+    return promise.resolveWith(this.t.getRange(toNativeRange(this.K, range)).map(entry =>
+      /** @type {InstanceType<KEY>} */ (this._dK(entry.key))
     ).asArray)
   }
 
   /**
    * @todo rename entries
-   * @param {common.RangeOption<KEY>} range
-   * @return {Promise<Array<VALUE>>}
+   * @param {common.RangeOption<InstanceType<KEY>>} range
+   * @return {Promise<Array<InstanceType<VALUE>>>}
    */
   getValues (range = {}) {
-    return promise.resolveWith(this.t.getRange(toNativeRange(range)).map(entry =>
-      /** @type {VALUE} */ (this.V.decode(decoding.createDecoder(entry.value)))
+    return promise.resolveWith(this.t.getRange(toNativeRange(this.K, range)).map(entry =>
+      /** @type {InstanceType<VALUE>} */ (this.V.decode(decoding.createDecoder(entry.value)))
     ).asArray)
   }
 
   /**
-   * @param {common.RangeOption<KEY>} range
-   * @param {function(common.ICursor<KEY,VALUE,undefined>):void|Promise<void>} f
+   * @param {common.RangeOption<InstanceType<KEY>>} range
+   * @param {function(common.ICursor<InstanceType<KEY>,InstanceType<VALUE>,undefined>):void|Promise<void>} f
    * @return {Promise<void>}
    */
   async iterate (range, f) {
@@ -206,11 +215,11 @@ class Table {
     const stop = () => {
       stopped = true
     }
-    for (const { key, value } of this.t.getRange(toNativeRange(range))) {
+    for (const { key, value } of this.t.getRange(toNativeRange(this.K, range))) {
       await f({
         stop,
-        key: /** @type {KEY} */ (this._dK(key)),
-        value: /** @type {VALUE} */ (this.V.decode(decoding.createDecoder(value))),
+        key: /** @type {InstanceType<KEY>} */ (this._dK(key)),
+        value: /** @type {InstanceType<VALUE>} */ (this.V.decode(decoding.createDecoder(value))),
         fkey: undefined
       })
       if (stopped || (range.limit != null && ++cnt >= range.limit)) {
@@ -220,14 +229,11 @@ class Table {
   }
 
   /**
-   * @param {KEY} key
-   * @param {VALUE} value
+   * @param {InstanceType<KEY>|ConstructorParameters<KEY>[0]} key
+   * @param {InstanceType<VALUE>|ConstructorParameters<VALUE>[0]} value
    */
   set (key, value) {
-    if (value.constructor !== this.V || key.constructor !== this.K) {
-      throw common.unexpectedContentTypeException
-    }
-    this.t.put(encodeKey(key, 0), encodeValue(value))
+    this.t.put(encodeKey(this.K, key, 0), encodeValue(this.V, value))
     for (const indexname in this.indexes) {
       const indexTable = this.indexes[indexname]
       indexTable.t.set(indexTable.indexDef.mapper(key, value), key)
@@ -237,22 +243,19 @@ class Table {
   /**
    * Only works with AutoKey
    *
-   * @param {VALUE} value
-   * @return {Promise<KEY>}
+   * @param {InstanceType<VALUE>|ConstructorParameters<VALUE>[0]} value
+   * @return {Promise<InstanceType<KEY>>}
    */
   async add (value) {
     if (/** @type {any} */ (this.K) !== common.AutoKey) {
       throw error.create('Expected key to be an AutoKey')
     }
-    if (value.constructor !== this.V) {
-      throw common.unexpectedContentTypeException
-    }
     const [lastKey] = this.t.getKeys({ reverse: true, limit: 1 }).asArray
     /**
-     * @type {KEY & common.AutoKey}
+     * @type {InstanceType<KEY> & common.AutoKey}
      */
     const key = /** @type {any} */ (new common.AutoKey(lastKey == null ? 1 : /** @type {number} */ (lastKey) + 1))
-    this.t.put(key.v, encodeValue(value))
+    this.t.put(key.v, encodeValue(this.V, value))
     for (const indexname in this.indexes) {
       const indexTable = this.indexes[indexname]
       indexTable.t.set(indexTable.indexDef.mapper(key, value), key)
@@ -261,14 +264,14 @@ class Table {
   }
 
   /**
-   * @param {KEY} key
+   * @param {InstanceType<KEY>|ConstructorParameters<KEY>[0]} key
    */
   remove (key) {
-    const encodedKey = encodeKey(key, 0)
+    const encodedKey = encodeKey(this.K, key, 0)
     if (!object.isEmpty(this.indexes)) {
       const buf = this.t.getBinary(encodedKey) // @todo experiment with getBinaryFast (doesn't work because readVarUint8 doesn't copy)
       /* c8 ignore next */
-      const value = buf ? /** @type {VALUE} */ (this.V.decode(decoding.createDecoder(buf))) : null
+      const value = buf ? /** @type {InstanceType<VALUE>} */ (this.V.decode(decoding.createDecoder(buf))) : null
       for (const indexname in this.indexes) {
         const indexTable = this.indexes[indexname]
         indexTable.t.remove(indexTable.indexDef.mapper(key, value))
@@ -312,7 +315,7 @@ export class ObjectStore {
     if (value.constructor !== this.odef[key]) {
       throw common.unexpectedContentTypeException
     }
-    this.t.put(key, encodeValue(value))
+    this.t.put(key, encodeValue(this.odef[key], value))
   }
 
   /**
@@ -352,7 +355,7 @@ class DB {
     this.def = def
     this.env = env
     /**
-     * @type {{ [Tablename in keyof DEF["tables"]]: Table<InstanceType<NonNullable<DEF["tables"]>[Tablename]["key"]>, InstanceType<NonNullable<DEF["tables"]>[Tablename]["value"]>, common.Defined<NonNullable<DEF["tables"]>[Tablename]["indexes"]>> }}
+     * @type {{ [Tablename in keyof DEF["tables"]]: Table<NonNullable<DEF["tables"]>[Tablename]["key"], NonNullable<DEF["tables"]>[Tablename]["value"], common.Defined<NonNullable<DEF["tables"]>[Tablename]["indexes"]>> }}
      */
     this.tables = /** @type {any} */ ({})
     for (const dbname in def.tables) {
