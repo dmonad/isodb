@@ -484,7 +484,7 @@ export class IObject extends IObjectReadonly {
   /**
    * @template {keyof ODef} Key
    * @param {Key} _key
-   * @param {InstanceType<ODef[Key]>} _value
+   * @param {InstanceType<ODef[Key]>|ConstructorParameters<ODef[Key]>[0]} _value
    */
   set (_key, _value) {
     error.methodUnimplemented()

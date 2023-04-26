@@ -743,7 +743,9 @@ export const testCustomKeyValue = async tc => {
       await db.transact(async tr => {
         t.assert((await tr.tables.custom.get(new CustomKeyValue('key'))) === null)
         tr.tables.custom.set(new CustomKeyValue('key'), new CustomKeyValue('value'))
-        t.assert(/** @type {CustomKeyValue} */ (await tr.tables.custom.get(new CustomKeyValue('key'))).v === 'value')
+        t.assert(/** @type {CustomKeyValue} */ (await tr.tables.custom.get('key')).v === 'value')
+        tr.tables.custom.set('key2', 'value2')
+        t.assert(/** @type {CustomKeyValue} */ (await tr.tables.custom.get(new CustomKeyValue('key2'))).v === 'value2')
       })
     })
   }
@@ -754,6 +756,7 @@ export const testCustomKeyValue = async tc => {
  */
 export const testObjectStorage = async tc => {
   for (const iso of isoImpls) {
+    await iso.deleteDB(getDbName(tc.testName))
     const db = await iso.openDB(getDbName(tc.testName), {
       objects: {
         obj1: {
@@ -767,9 +770,12 @@ export const testObjectStorage = async tc => {
       tr.objects.obj1.set('val1', new iso.StringValue('test1'))
       const res2 = await tr.objects.obj1.get('val1')
       t.assert(res2 && res2.v === 'test1')
-      tr.objects.obj1.remove('val1')
+      tr.objects.obj1.set('val1', 'test2')
       const res3 = await tr.objects.obj1.get('val1')
-      t.assert(res3 === null)
+      t.assert(res3 && res3.v === 'test2')
+      tr.objects.obj1.remove('val1')
+      const res4 = await tr.objects.obj1.get('val1')
+      t.assert(res4 === null)
       // @ts-ignore
       await t.failsAsync(() => tr.objects.obj1.set('key3', new iso.StringValue('test')))
       // @ts-ignore

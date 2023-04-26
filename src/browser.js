@@ -434,9 +434,6 @@ export class ObjectStore {
    * @param {InstanceType<ODef[Key]>} value
    */
   set (key, value) {
-    if (value.constructor !== this.odef[key]) {
-      throw common.unexpectedContentTypeException
-    }
     idb.put(this.store, /** @type {any} */ (encodeValue(this.odef[key], value)), /** @type {string} */ (key))
   }
 

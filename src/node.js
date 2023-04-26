@@ -312,9 +312,6 @@ export class ObjectStore {
    * @param {InstanceType<ODef[Key]>} value
    */
   set (key, value) {
-    if (value.constructor !== this.odef[key]) {
-      throw common.unexpectedContentTypeException
-    }
     this.t.put(key, encodeValue(this.odef[key], value))
   }
 
