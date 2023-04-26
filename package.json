@@ -31,12 +31,10 @@
     "debug:browser": "npm run gentesthtml && 0serve -o test.html",
     "debug:node": "node --inspect-brk tests/index.js",
     "test": "c8 node tests/index.js",
-    "test-coverage": "npm run clean && npm run lint && npm run dist && c8 --check-coverage --lines 100 --branches 100 --functions 100 --statements 100 node --unhandled-rejections=strict ./dist/test.cjs --repetition-time 50 --production",
     "test-inspect": "node --inspect-brk --unhandled-rejections=strict ./test.js --repetition-time 50 --production",
     "test-extensive": "node test.js && npm test -- --repetition-time 30000 --extensive",
-    "test-code-coverage": "npm run clean && npm run dist && c8 --reporter html node ./dist/test.cjs --production",
     "lint": "standard && tsc",
-    "preversion": "npm run clean && npm run test && npm run types && npm run dist",
+    "preversion": "npm run clean && npm run test && npm run types",
     "postpublish": "npm run clean",
     "gentesthtml": "0gentesthtml --script ./tests/index.browser.js > test.html"
   },
