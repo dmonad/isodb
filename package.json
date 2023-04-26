@@ -13,7 +13,7 @@
     ".": {
       "types": "./dist/src/interface.d.ts",
       "node": "./src/node.js",
-      "browser": "./src/browser.js",
+      "browser": "./src/browser.js"
     },
     "./package.json": "./package.json"
   },
