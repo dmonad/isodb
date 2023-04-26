@@ -252,12 +252,12 @@ export class StringValue {
  */
 
 /**
- * @template {IEncodable} KEY
+ * @template {typeof IEncodable} KEY
  *
  * @typedef {Object} RangeOption
- * @property {KEY} [RangeOption.start]
+ * @property {InstanceType<KEY>|ConstructorParameters<KEY>[0]} [RangeOption.start]
  * @property {boolean} [RangeOption.startExclusive]
- * @property {KEY} [RangeOption.end]
+ * @property {InstanceType<KEY>|ConstructorParameters<KEY>[0]} [RangeOption.end]
  * @property {boolean} [RangeOption.endExclusive]
  * @property {boolean} [RangeOption.reverse]
  * @property {number} [RangeOption.limit] Number of items to receive
@@ -302,7 +302,7 @@ export class ITableReadonly {
   }
 
   /**
-   * @param {RangeOption<InstanceType<KEY>>} [_range]
+   * @param {RangeOption<KEY>} [_range]
    * @return {Promise<Array<{ key: InstanceType<KEY>, value: InstanceType<VALUE>, fkey: FKEY }>>}
    */
   getEntries (_range) {
@@ -310,7 +310,7 @@ export class ITableReadonly {
   }
 
   /**
-   * @param {RangeOption<InstanceType<KEY>>} [_range]
+   * @param {RangeOption<KEY>} [_range]
    * @return {Promise<Array<InstanceType<VALUE>>>}
    */
   getValues (_range) {
@@ -318,7 +318,7 @@ export class ITableReadonly {
   }
 
   /**
-   * @param {RangeOption<InstanceType<KEY>>} [_range]
+   * @param {RangeOption<KEY>} [_range]
    * @return {Promise<Array<InstanceType<KEY>>>}
    */
   getKeys (_range) {
@@ -326,7 +326,7 @@ export class ITableReadonly {
   }
 
   /**
-   * @param {RangeOption<InstanceType<KEY>>} _range
+   * @param {RangeOption<KEY>} _range
    * @param {function(ICursor<InstanceType<KEY>,InstanceType<VALUE>,FKEY>):void|Promise<void>} _f
    * @return {Promise<void>}
    */
@@ -411,7 +411,7 @@ export class IndexedTable {
   }
 
   /**
-   * @param {RangeOption<InstanceType<MKEY>>} range
+   * @param {RangeOption<MKEY>} range
    * @return {Promise<Array<{ key: InstanceType<MKEY>, value: InstanceType<VALUE>, fkey: InstanceType<KEY>}>>}
    */
   async getEntries (range) {
@@ -421,7 +421,7 @@ export class IndexedTable {
   }
 
   /**
-   * @param {RangeOption<InstanceType<MKEY>>} range
+   * @param {RangeOption<MKEY>} range
    * @return {Promise<Array<InstanceType<VALUE>>>}
    */
   async getValues (range) {
@@ -430,7 +430,7 @@ export class IndexedTable {
   }
 
   /**
-   * @param {RangeOption<InstanceType<MKEY>>} range
+   * @param {RangeOption<MKEY>} range
    * @return {Promise<Array<InstanceType<MKEY>>>}
    */
   getKeys (range) {
@@ -438,7 +438,7 @@ export class IndexedTable {
   }
 
   /**
-   * @param {RangeOption<InstanceType<MKEY>>} range
+   * @param {RangeOption<MKEY>} range
    * @param {function(ICursor<InstanceType<MKEY>,InstanceType<VALUE>,InstanceType<KEY>>):void} f
    * @return {Promise<void>}
    */

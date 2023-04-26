@@ -195,7 +195,8 @@ export const testIterator = async tc => {
          * @type {Array<string>}
          */
         const read = []
-        await tr.tables.strings.iterate({ start: new iso.StringKey('1'), end: new iso.StringKey('3') }, (cursor) => {
+        // iterate without explicit wrapper
+        await tr.tables.strings.iterate({ start: '1', end: '3' }, (cursor) => {
           const k = cursor.key
           const v = cursor.value
           /* c8 ignore next 2 */

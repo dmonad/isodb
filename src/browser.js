@@ -71,8 +71,8 @@ const getKeyDecoder = (keytype) => {
 }
 
 /**
- * @template {common.IEncodable} KEY
- * @param {typeof common.IEncodable} K
+ * @template {typeof common.IEncodable} KEY
+ * @param {KEY} K
  * @param {common.RangeOption<KEY>} range
  */
 const toNativeRange = (K, range) => {
@@ -151,7 +151,7 @@ class Table {
   }
 
   /**
-   * @param {common.RangeOption<InstanceType<KEY>>} range
+   * @param {common.RangeOption<KEY>} range
    * @param {function(common.ICursor<InstanceType<KEY>,InstanceType<VALUE>,undefined>):void|Promise<void>} f
    * @return {Promise<void>}
    */
@@ -177,7 +177,7 @@ class Table {
   }
 
   /**
-   * @param {common.RangeOption<InstanceType<KEY>>} range
+   * @param {common.RangeOption<KEY>} range
    * @return {Promise<Array<{ key: InstanceType<KEY>, value: InstanceType<VALUE>, fkey: undefined }>>}
    */
   async getEntries (range = {}) {
@@ -190,7 +190,7 @@ class Table {
   }
 
   /**
-   * @param {common.RangeOption<InstanceType<KEY>>} range
+   * @param {common.RangeOption<KEY>} range
    * @return {Promise<Array<InstanceType<VALUE>>>}
    */
   async getValues (range = {}) {
@@ -201,7 +201,7 @@ class Table {
   }
 
   /**
-   * @param {common.RangeOption<InstanceType<KEY>>} range
+   * @param {common.RangeOption<KEY>} range
    * @return {Promise<Array<InstanceType<KEY>>>}
    */
   async getKeys (range = {}) {
