@@ -352,6 +352,10 @@ class DB {
     this.def = def
     this.env = env
     /**
+     * @type {Transaction<DEF>?}
+     */
+    this._tr = null
+    /**
      * @type {{ [Tablename in keyof DEF["tables"]]: Table<NonNullable<DEF["tables"]>[Tablename]["key"], NonNullable<DEF["tables"]>[Tablename]["value"], common.Defined<NonNullable<DEF["tables"]>[Tablename]["indexes"]>> }}
      */
     this.tables = /** @type {any} */ ({})
@@ -398,12 +402,16 @@ class DB {
    * @return {Promise<T>}
    */
   async transact (f) {
-    return this.env.transaction(() => {
-      /**
-       * @type {Transaction<DEF>}
-       */
-      const tr = new Transaction(this)
-      return f(tr)
+    if (this._tr) return f(this._tr)
+    return this.env.transaction(async () => {
+      this._tr = new Transaction(this)
+      let res
+      try {
+        res = await f(this._tr)
+      } finally {
+        this._tr = null
+      }
+      return res
     })
   }
 

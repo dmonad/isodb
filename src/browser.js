@@ -332,6 +332,10 @@ class DB {
   constructor (db, def) {
     this.db = db
     this.def = def
+    /**
+     * @type {Transaction<DEF>?}
+     */
+    this._tr = null
   }
 
   /**
@@ -341,11 +345,15 @@ class DB {
    * @return {Promise<T>}
    */
   transact (f) {
-    /**
-     * @type {common.ITransaction<DEF>}
-     */
-    const tr = new Transaction(this)
-    return f(tr)
+    if (this._tr) return f(this._tr)
+    this._tr = new Transaction(this)
+    let res
+    try {
+      res = f(this._tr)
+    } finally {
+      this._tr = null
+    }
+    return res
   }
 
   /**

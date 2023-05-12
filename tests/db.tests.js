@@ -62,12 +62,18 @@ export const testIterator = async tc => {
         for (let i = 1; i < 30; i++) {
           tr.tables.auto.add(new iso.AnyValue({ i }))
         }
-        for (let i = 1; i < 9; i++) {
-          tr.tables.strings.set(new iso.StringKey(i + ''), new iso.AnyValue(i + ''))
-        }
-        for (let i = 1; i < 9; i++) {
-          tr.tables.bin.set(new CustomKeyValue(i + ''), new iso.AnyValue(i + ''))
-        }
+        // testing nested transaction
+        db.transact(tr => {
+          for (let i = 1; i < 9; i++) {
+            tr.tables.strings.set(new iso.StringKey(i + ''), new iso.AnyValue(i + ''))
+          }
+          // testing nested transaction (2)
+          db.transact(tr => {
+            for (let i = 1; i < 9; i++) {
+              tr.tables.bin.set(new CustomKeyValue(i + ''), new iso.AnyValue(i + ''))
+            }
+          })
+        })
       })
       await db.transactReadonly(async tr => {
         /**
