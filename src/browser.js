@@ -96,6 +96,11 @@ const toNativeRange = (K, range) => {
 }
 
 /**
+ * @param {common.RangeOption<any>} range
+ */
+const getRangeLimit = range => range.limit != null && range.limit > 0 ? range.limit : undefined
+
+/**
  * @template {typeof common.IEncodable} KEY
  * @template {typeof common.IEncodable} VALUE
  * @template {{[key: string]: common.ITableIndex<any, any, any>}} INDEX
@@ -170,8 +175,9 @@ class Table {
         key: /** @type {InstanceType<KEY>} */ (this._dK(key)),
         fkey: undefined
       })
+      const rangeLimit = getRangeLimit(range)
       /* c8 ignore next */
-      if (stopped || (range.limit != null && ++cnt >= range.limit)) {
+      if (stopped || (rangeLimit != null && ++cnt >= rangeLimit)) {
         return false
       }
     }, range.reverse ? 'prev' : 'next')
@@ -182,7 +188,7 @@ class Table {
    * @return {Promise<Array<{ key: InstanceType<KEY>, value: InstanceType<VALUE>, fkey: undefined }>>}
    */
   async getEntries (range = {}) {
-    const entries = await idb.getAllKeysValues(this.store, toNativeRange(this.K, range) || undefined, range.limit)
+    const entries = await idb.getAllKeysValues(this.store, toNativeRange(this.K, range) || undefined, getRangeLimit(range))
     return entries.map(entry => ({
       value: /** @type {InstanceType<VALUE>} */ (this.V.decode(decoding.createDecoder(entry.v))),
       key: /** @type {InstanceType<KEY>} */ (this._dK(entry.k)),
@@ -195,7 +201,7 @@ class Table {
    * @return {Promise<Array<InstanceType<VALUE>>>}
    */
   async getValues (range = {}) {
-    const values = await idb.getAll(this.store, toNativeRange(this.K, range) || undefined, range.limit)
+    const values = await idb.getAll(this.store, toNativeRange(this.K, range) || undefined, getRangeLimit(range))
     return values.map(value =>
       /** @type {InstanceType<VALUE>} */ (this.V.decode(decoding.createDecoder(value)))
     )
@@ -206,7 +212,7 @@ class Table {
    * @return {Promise<Array<InstanceType<KEY>>>}
    */
   async getKeys (range = {}) {
-    const keys = await idb.getAllKeys(this.store, toNativeRange(this.K, range) || undefined, range.limit)
+    const keys = await idb.getAllKeys(this.store, toNativeRange(this.K, range) || undefined, getRangeLimit(range))
     return keys.map(key =>
       /** @type {InstanceType<KEY>} */ (this._dK(key))
     )

@@ -48,7 +48,7 @@ const toNativeRange = (K, range) => {
   if (range.reverse) {
     lrange.reverse = range.reverse
   }
-  if (range.limit != null) {
+  if (range.limit != null && range.limit > 0) {
     lrange.limit = range.limit
   }
   return lrange
