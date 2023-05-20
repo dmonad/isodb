@@ -236,7 +236,8 @@ class Table {
     this.t.put(encodeKey(this.K, key, 0), encodeValue(this.V, value))
     for (const indexname in this.indexes) {
       const indexTable = this.indexes[indexname]
-      indexTable.t.set(indexTable.indexDef.mapper(key, value), key)
+      const mappedKey = indexTable.indexDef.mapper(key, value)
+      mappedKey !== null && indexTable.t.set(mappedKey, key)
     }
   }
 
@@ -258,7 +259,8 @@ class Table {
     this.t.put(key.v, encodeValue(this.V, value))
     for (const indexname in this.indexes) {
       const indexTable = this.indexes[indexname]
-      indexTable.t.set(indexTable.indexDef.mapper(key, value), key)
+      const mappedKey = indexTable.indexDef.mapper(key, value)
+      mappedKey !== null && indexTable.t.set(mappedKey, key)
     }
     return key
   }
@@ -274,7 +276,8 @@ class Table {
       const value = buf ? /** @type {InstanceType<VALUE>} */ (this.V.decode(decoding.createDecoder(buf))) : null
       for (const indexname in this.indexes) {
         const indexTable = this.indexes[indexname]
-        indexTable.t.remove(indexTable.indexDef.mapper(key, value))
+        const mappedKey = indexTable.indexDef.mapper(key, value)
+        mappedKey !== null && indexTable.t.remove(mappedKey)
       }
     }
     this.t.remove(encodedKey)

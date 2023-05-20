@@ -143,7 +143,8 @@ class Table {
         const value = v == null ? null : this.V.decode(decoding.createDecoder(/** @type {Uint8Array} */ (v)))
         for (const indexname in this.indexes) {
           const indexTable = this.indexes[indexname]
-          indexTable.t.remove(indexTable.indexDef.mapper(key, value))
+          const mappedKey = indexTable.indexDef.mapper(key, value)
+          mappedKey !== null && indexTable.t.remove(mappedKey)
         }
       })
     }
@@ -219,7 +220,8 @@ class Table {
     idb.put(this.store, /** @type {any} */ (encodeValue(this.V, value)), encodeKey(this.K, key))
     for (const indexname in this.indexes) {
       const indexTable = this.indexes[indexname]
-      indexTable.t.set(indexTable.indexDef.mapper(key, value), key)
+      const mappedKey = indexTable.indexDef.mapper(key, value)
+      mappedKey !== null && indexTable.t.set(mappedKey, key)
     }
   }
 
@@ -243,7 +245,8 @@ class Table {
     const key = await idb.put(this.store, /** @type {any} */ (encodeValue(this.V, value))).then(k => /** @type {any} */ (new K(k)))
     for (const indexname in this.indexes) {
       const indexTable = this.indexes[indexname]
-      indexTable.t.set(indexTable.indexDef.mapper(key, value), key)
+      const mappedKey = indexTable.indexDef.mapper(key, value)
+      mappedKey !== null && indexTable.t.set(mappedKey, key)
     }
     return key
   }

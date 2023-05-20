@@ -594,6 +594,10 @@ export const testIndexing = async tc => {
             stringified: {
               key: iso.StringKey,
               mapper: (k, _v) => new iso.StringKey(k.v + '')
+            },
+            partially: {
+              key: iso.AutoKey,
+              mapper: (k, _v) => k.v === 1 ? k.v : null
             }
           }
         },
@@ -616,6 +620,13 @@ export const testIndexing = async tc => {
           const testValue = new iso.AnyValue({ test: 'someVal' + i })
           autoTable.add(testValue)
         }
+      })
+    })
+    await t.measureTimeAsync(`${iso.name}: 'check filtered index`, async () => {
+      await db.transact(async tr => {
+        const autoTable = tr.tables.auto
+        const keys = await autoTable.indexes.partially.getKeys()
+        t.assert(keys.length === 1 && keys[0].v === 1)
       })
     })
     await t.groupAsync(`${iso.name}: Using stringified index`, async () => {
