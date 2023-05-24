@@ -288,7 +288,7 @@ export class StringValue {
 export class ITableReadonly {
   constructor () {
     /**
-     * @type {{ [Indexname in keyof INDEX]: ITableReadonly<INDEX[Indexname]["key"], VALUE, {}, InstanceType<KEY>> }}
+     * @type {{ [Indexname in keyof INDEX]: IndexedTableReadonly<INDEX[Indexname]["key"], VALUE, KEY, {}> }}
      */
     this.indexes = /** @type {any} */ ({})
   }
@@ -347,6 +347,14 @@ export class ITableReadonly {
  * @extends ITableReadonly<KEY,VALUE,INDEX,FKEY>
  */
 export class ITable extends ITableReadonly {
+  constructor () {
+    super()
+    /**
+     * @type {{ [Indexname in keyof INDEX]: IndexedTable<INDEX[Indexname]["key"], VALUE, KEY, {}> }}
+     */
+    this.indexes = /** @type {any} */ ({})
+  }
+
   /**
    * @param {InstanceType<KEY>|ConstructorParameters<KEY>[0]} _key
    * @param {InstanceType<VALUE>|ConstructorParameters<VALUE>[0]} _value
@@ -387,14 +395,14 @@ export class ITable extends ITableReadonly {
  * @todo move to utils. dont export via common
  * @todo rename MKEY to FKEY and change the order
  *
- * @template {typeof IEncodable} KEY
- * @template {typeof IEncodable} VALUE
  * @template {typeof IEncodable} MKEY
+ * @template {typeof IEncodable} VALUE
+ * @template {typeof IEncodable} KEY
  * @template {{[key: string]: ITableIndex<any, any, any>}} INDEX
  *
  * @implements ITableReadonly<MKEY,VALUE,INDEX,InstanceType<KEY>>
  */
-export class IndexedTable {
+export class IndexedTableReadonly {
   /**
    * @param {ITable<MKEY,KEY,INDEX,undefined>} t
    * @param {ITable<KEY,VALUE,INDEX,undefined>} source
@@ -405,7 +413,7 @@ export class IndexedTable {
     this.source = source
     this.indexDef = def
     /**
-     * @type {{ [Indexname in keyof INDEX]: ITableReadonly<INDEX[Indexname]["key"],VALUE,{},InstanceType<MKEY>> }}
+     * @type {{ [Indexname in keyof INDEX]: IndexedTableReadonly<INDEX[Indexname]["key"],VALUE,MKEY,{}> }}
      */
     this.indexes = /** @type {any} */ ({})
   }
@@ -461,6 +469,39 @@ export class IndexedTable {
         stop: cursor.stop
       })
     })
+  }
+}
+
+/**
+ * @todo move to utils. dont export via common
+ * @todo rename MKEY to FKEY and change the order
+ *
+ * @template {typeof IEncodable} KEY
+ * @template {typeof IEncodable} VALUE
+ * @template {typeof IEncodable} MKEY
+ * @template {{[key: string]: ITableIndex<any, any, any>}} INDEX
+ *
+ * @extends IndexedTableReadonly<KEY, VALUE, MKEY, INDEX>
+ */
+export class IndexedTable extends IndexedTableReadonly {
+  /**
+   * @param {InstanceType<KEY>|ConstructorParameters<KEY>[0]} key
+   * @return {Promise<void>}
+   */
+  async remove (key) {
+    const fkey = await this.t.get(key)
+    if (fkey) {
+      await this.source.remove(fkey)
+    }
+  }
+
+  /**
+   * @param {RangeOption<KEY>} range
+   * @return {Promise<void>}
+   */
+  async removeRange (range) {
+    const keys = await this.t.getValues(range)
+    await promise.all(keys.map(key => this.source.remove(key)))
   }
 }
 

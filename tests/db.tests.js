@@ -4,7 +4,6 @@ import * as rsa from 'lib0/crypto/rsa-oaep'
 import * as aes from 'lib0/crypto/aes-gcm'
 import * as encoding from 'lib0/encoding'
 import * as decoding from 'lib0/decoding'
-import * as math from 'lib0/math'
 
 /**
  * @type {Array<import('../src/node.js') | import('../src/browser.js')>}
@@ -624,7 +623,7 @@ export const testIndexing = async tc => {
           indexes: {
             reversed: {
               key: iso.StringKey,
-              mapper: (k, _v) => new iso.StringKey(k.v.split('').reverse().join('')) // @todo mapper should only contain key and not value
+              mapper: (k, _v) => new iso.StringKey(k.v.split('').reverse().join(''))
             }
           }
         }
@@ -642,7 +641,7 @@ export const testIndexing = async tc => {
     await t.measureTimeAsync(`${iso.name}: 'check filtered index`, async () => {
       await db.transact(async tr => {
         const autoTable = tr.tables.auto
-        const keys = await autoTable.indexes.partially.getKeys()
+        const keys = await autoTable.indexes.partially.getKeys({})
         t.assert(keys.length === 1 && keys[0].v === 1)
       })
     })
@@ -690,22 +689,39 @@ export const testIndexing = async tc => {
           })
           t.assert(index === 6)
         })
+        await t.groupAsync('remove entry from index', async () => {
+          await tr.tables.auto.indexes.stringified.remove(new iso.StringKey('2'))
+          t.assert((await tr.tables.auto.get(new iso.AutoKey(2))) === null)
+          t.assert((await tr.tables.auto.indexes.stringified.get(new iso.StringKey('2'))) === null)
+        })
         await t.groupAsync('remove entry range', async () => {
           let index = 4
-          await tr.tables.auto.removeRange({ end: 4 })
-          t.assert((await tr.tables.auto.get(new iso.AutoKey(2))) === null)
-          await tr.tables.auto.indexes.stringified.iterate({ limit: 5 }, async cursor => {
+          await tr.tables.auto.removeRange({ end: index })
+          t.assert((await tr.tables.auto.get(new iso.AutoKey(index - 1))) === null)
+          await tr.tables.auto.indexes.stringified.iterate({}, async cursor => {
             t.compare(cursor.value.v, { test: 'someVal' + index })
             t.compare(cursor.fkey.v, index + 1)
             index++
           })
-          t.assert(index === 9)
+          t.assert(index === n)
+        })
+        await t.groupAsync('remove entry range from index', async () => {
+          let index = 5
+          await tr.tables.auto.indexes.stringified.removeRange({ end: index + '' })
+          t.assert((await tr.tables.auto.get(new iso.AutoKey(index - 1))) === null)
+          t.assert((await tr.tables.auto.indexes.stringified.get(new iso.StringKey('' + (index - 1)))) === null)
+          await tr.tables.auto.indexes.stringified.iterate({}, async cursor => {
+            t.compare(cursor.value.v, { test: 'someVal' + index })
+            t.compare(cursor.fkey.v, index + 1)
+            index++
+          })
+          t.assert(index === n)
         })
         await t.groupAsync('remove all entries', async () => {
           let index = -1
           await tr.tables.auto.removeRange({})
           t.assert((await tr.tables.auto.get(new iso.AutoKey(6))) === null)
-          await tr.tables.auto.indexes.stringified.iterate({ limit: 5 }, async _cursor => {
+          await tr.tables.auto.indexes.stringified.iterate({}, async _cursor => {
             index++
           })
           t.assert(index === -1)
