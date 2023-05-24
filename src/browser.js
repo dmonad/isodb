@@ -142,18 +142,54 @@ class Table {
    */
   remove (key) {
     const encodedKey = encodeKey(this.K, key)
+    /**
+     * @type {Array<Promise<any>>}
+     */
+    const ps = []
     if (!object.isEmpty(this.indexes)) {
-      idb.get(this.store, encodedKey).then(v => {
+      ps.push(idb.get(this.store, encodedKey).then(v => {
         /* c8 ignore next */
         const value = v == null ? null : this.V.decode(decoding.createDecoder(/** @type {Uint8Array} */ (v)))
-        for (const indexname in this.indexes) {
-          const indexTable = this.indexes[indexname]
+        return promise.all(object.map(this.indexes, (indexTable) => {
           const mappedKey = indexTable.indexDef.mapper(key, value)
-          mappedKey !== null && indexTable.t.remove(mappedKey)
-        }
-      })
+          /* c8 ignore next */
+          return mappedKey !== null ? indexTable.t.remove(mappedKey) : null
+        }))
+      }))
     }
-    idb.del(this.store, encodeKey(this.K, key))
+    ps.push(idb.del(this.store, encodeKey(this.K, key)))
+    return promise.all(ps).then(() => {})
+  }
+
+  /**
+   * @param {common.RangeOption<KEY>} range
+   */
+  async removeRange (range) {
+    const nrange = toNativeRange(this.K, range)
+    if (nrange == null) {
+      // clear everything
+      return promise.all([idb.rtop(this.store.clear()), ...object.map(this.indexes, index =>
+        idb.rtop(/** @type {Table<any, any, any>} */ (index.t).store.clear())
+      )])
+    }
+    if (object.isEmpty(this.indexes)) {
+      // delete using native range iterator
+      return idb.del(this.store, nrange)
+    }
+    // delete all indexed k-v pairs manually
+    // @todo this should block future requests (we can still retrieve indexed values after we
+    // deleted the range)
+    return idb.getAllKeysValues(this.store, nrange).then(entries =>
+      promise.all(entries.map(({ v, k }) => {
+        const key = this._dK(k)
+        /* c8 ignore next */
+        const value = v == null ? null : this.V.decode(decoding.createDecoder(/** @type {Uint8Array} */ (v)))
+        return promise.all([idb.del(this.store, k), ...object.map(this.indexes, indexTable => {
+          const mappedKey = indexTable.indexDef.mapper(key, value)
+          return mappedKey === null ? null : indexTable.t.remove(mappedKey)
+        })])
+      })).then(() => undefined)
+    )
   }
 
   /**

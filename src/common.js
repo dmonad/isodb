@@ -367,8 +367,17 @@ export class ITable extends ITableReadonly {
 
   /**
    * @param {InstanceType<KEY>|ConstructorParameters<KEY>[0]} _key
+   * @return {Promise<void>}
    */
   remove (_key) {
+    error.methodUnimplemented()
+  }
+
+  /**
+   * @param {RangeOption<KEY>} _range
+   * @return {Promise<void>}
+   */
+  removeRange (_range) {
     error.methodUnimplemented()
   }
 }

@@ -270,17 +270,45 @@ class Table {
    */
   remove (key) {
     const encodedKey = encodeKey(this.K, key, 0)
+    /**
+     * @type {Array<Promise<any>>}
+     */
+    const ps = []
     if (!object.isEmpty(this.indexes)) {
       const buf = this.t.getBinary(encodedKey) // @todo experiment with getBinaryFast (doesn't work because readVarUint8 doesn't copy)
       /* c8 ignore next */
       const value = buf ? /** @type {InstanceType<VALUE>} */ (this.V.decode(decoding.createDecoder(buf))) : null
-      for (const indexname in this.indexes) {
-        const indexTable = this.indexes[indexname]
+      ps.push(promise.all(object.map(this.indexes, indexTable => {
         const mappedKey = indexTable.indexDef.mapper(key, value)
-        mappedKey !== null && indexTable.t.remove(mappedKey)
-      }
+        /* c8 ignore next */
+        return mappedKey === null ? null : indexTable.t.remove(mappedKey)
+      })))
     }
-    this.t.remove(encodedKey)
+    ps.push(this.t.remove(encodedKey))
+    return promise.all(ps).then(() => {})
+  }
+
+  /**
+   * @param {common.RangeOption<KEY>} range
+   */
+  async removeRange (range) {
+    const nrange = toNativeRange(this.K, range)
+    if (nrange.start == null && nrange.end == null) {
+      // clear everything
+      return promise.all([this.t.clearAsync(), ...object.map(this.indexes, indexTable =>
+        /** @type {Table<any,any,any>} */ (indexTable.t).t.clearAsync()
+      )]).then(() => {})
+    }
+    // delete all indexed k-v pairs manually
+    return promise.all(this.t.getRange(nrange).map(({ key, value }) => {
+      const kk = this._dK(key)
+      /* c8 ignore next */
+      const val = value == null ? null : this.V.decode(decoding.createDecoder(/** @type {Uint8Array} */ (value)))
+      return promise.all([this.t.remove(key), ...object.map(this.indexes, indexTable => {
+        const mappedKey = indexTable.indexDef.mapper(kk, val)
+        return mappedKey === null ? null : indexTable.t.remove(mappedKey)
+      })])
+    })).then(() => {})
   }
 }
 

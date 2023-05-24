@@ -4,6 +4,7 @@ import * as rsa from 'lib0/crypto/rsa-oaep'
 import * as aes from 'lib0/crypto/aes-gcm'
 import * as encoding from 'lib0/encoding'
 import * as decoding from 'lib0/decoding'
+import * as math from 'lib0/math'
 
 /**
  * @type {Array<import('../src/node.js') | import('../src/browser.js')>}
@@ -516,6 +517,14 @@ export const testBenchmark = async tc => {
           t.assert(values.length === n)
         })
       })
+      await t.measureTimeAsync(`${iso.name}: Time to delete range of ${n} values - without range`, async () => {
+        const db = await iso.openDB(getDbName(tc.testName), def)
+        await db.transact(async tr => {
+          await tr.tables.abc.removeRange({})
+          const values = await tr.tables.auto.getValues({})
+          t.assert(values.length === 0)
+        })
+      })
       /**
        * @type {Array<import('../src/common.js').AutoKey>}
        */
@@ -572,6 +581,14 @@ export const testBenchmark = async tc => {
         await db.transactReadonly(async tr => {
           const values = await tr.tables.auto.getValues({})
           t.assert(values.length === n)
+        })
+      })
+      await t.measureTimeAsync(`${iso.name}: Time to delete range of ${n} values (autokey))`, async () => {
+        const db = await iso.openDB(getDbName(tc.testName), def)
+        await db.transact(async tr => {
+          await tr.tables.auto.removeRange({ start: 0, end: n })
+          const values = await tr.tables.auto.getValues({})
+          t.assert(values.length === 0)
         })
       })
     })
@@ -661,7 +678,7 @@ export const testIndexing = async tc => {
         })
       })
       await db.transact(async tr => {
-        await t.groupAsync('removing entries', async () => {
+        await t.groupAsync('remove entry', async () => {
           let index = 1
           const dkey = new iso.AutoKey(1)
           tr.tables.auto.remove(dkey)
@@ -672,6 +689,26 @@ export const testIndexing = async tc => {
             index++
           })
           t.assert(index === 6)
+        })
+        await t.groupAsync('remove entry range', async () => {
+          let index = 4
+          await tr.tables.auto.removeRange({ end: 4 })
+          t.assert((await tr.tables.auto.get(new iso.AutoKey(2))) === null)
+          await tr.tables.auto.indexes.stringified.iterate({ limit: 5 }, async cursor => {
+            t.compare(cursor.value.v, { test: 'someVal' + index })
+            t.compare(cursor.fkey.v, index + 1)
+            index++
+          })
+          t.assert(index === 9)
+        })
+        await t.groupAsync('remove all entries', async () => {
+          let index = -1
+          await tr.tables.auto.removeRange({})
+          t.assert((await tr.tables.auto.get(new iso.AutoKey(6))) === null)
+          await tr.tables.auto.indexes.stringified.iterate({ limit: 5 }, async _cursor => {
+            index++
+          })
+          t.assert(index === -1)
         })
       })
     })
