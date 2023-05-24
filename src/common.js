@@ -15,6 +15,11 @@ import * as rsa from 'lib0/crypto/rsa-oaep'
  * @typedef {string|number|bigint|boolean|_IAnyArray|Uint8Array|{[key: string]: IAny}|null|undefined} IAny
  */
 
+/**
+ * @template {new (...args: any)=>any} T
+ * @typedef {T extends abstract new (arg: infer P) => any ? P : never} FirstKeyParam
+ */
+
 /* c8 ignore start */
 /**
  * @interface
@@ -255,9 +260,9 @@ export class StringValue {
  * @template {typeof IEncodable} KEY
  *
  * @typedef {Object} RangeOption
- * @property {InstanceType<KEY>|ConstructorParameters<KEY>[0]} [RangeOption.start]
+ * @property {InstanceType<KEY>|FirstKeyParam<KEY>} [RangeOption.start]
  * @property {boolean} [RangeOption.startExclusive]
- * @property {InstanceType<KEY>|ConstructorParameters<KEY>[0]} [RangeOption.end]
+ * @property {InstanceType<KEY>|FirstKeyParam<KEY>} [RangeOption.end]
  * @property {boolean} [RangeOption.endExclusive]
  * @property {boolean} [RangeOption.reverse]
  * @property {number} [RangeOption.limit] Number of items to receive
@@ -294,7 +299,7 @@ export class ITableReadonly {
   }
 
   /**
-   * @param {InstanceType<KEY>|ConstructorParameters<KEY>[0]} _key
+   * @param {InstanceType<KEY>|FirstKeyParam<KEY>} _key
    * @return {Promise<InstanceType<VALUE>|null>}
    */
   get (_key) {
@@ -356,8 +361,8 @@ export class ITable extends ITableReadonly {
   }
 
   /**
-   * @param {InstanceType<KEY>|ConstructorParameters<KEY>[0]} _key
-   * @param {InstanceType<VALUE>|ConstructorParameters<VALUE>[0]} _value
+   * @param {InstanceType<KEY>|FirstKeyParam<KEY>} _key
+   * @param {InstanceType<VALUE>|FirstKeyParam<VALUE>[0]} _value
    */
   set (_key, _value) {
     error.methodUnimplemented()
@@ -366,7 +371,7 @@ export class ITable extends ITableReadonly {
   /**
    * Only works with AutoKey
    *
-   * @param {InstanceType<VALUE>|ConstructorParameters<VALUE>[0]} _value
+   * @param {InstanceType<VALUE>|FirstKeyParam<VALUE>[0]} _value
    * @return {Promise<InstanceType<KEY>>}
    */
   add (_value) {
@@ -374,7 +379,7 @@ export class ITable extends ITableReadonly {
   }
 
   /**
-   * @param {InstanceType<KEY>|ConstructorParameters<KEY>[0]} _key
+   * @param {InstanceType<KEY>|FirstKeyParam<KEY>} _key
    * @return {Promise<void>}
    */
   remove (_key) {
@@ -419,7 +424,7 @@ export class IndexedTableReadonly {
   }
 
   /**
-   * @param {InstanceType<MKEY>|ConstructorParameters<MKEY>[0]} mkey
+   * @param {InstanceType<MKEY>|FirstKeyParam<MKEY>[0]} mkey
    * @return {Promise<InstanceType<VALUE>|null>}
    */
   async get (mkey) {
@@ -485,7 +490,7 @@ export class IndexedTableReadonly {
  */
 export class IndexedTable extends IndexedTableReadonly {
   /**
-   * @param {InstanceType<KEY>|ConstructorParameters<KEY>[0]} key
+   * @param {InstanceType<KEY>|FirstKeyParam<KEY>} key
    * @return {Promise<void>}
    */
   async remove (key) {
@@ -534,7 +539,7 @@ export class IObject extends IObjectReadonly {
   /**
    * @template {keyof ODef} Key
    * @param {Key} _key
-   * @param {InstanceType<ODef[Key]>|ConstructorParameters<ODef[Key]>[0]} _value
+   * @param {InstanceType<ODef[Key]>|FirstKeyParam<ODef[Key]>} _value
    */
   set (_key, _value) {
     error.methodUnimplemented()

@@ -161,7 +161,7 @@ class Table {
   }
 
   /**
-   * @param {InstanceType<KEY>|ConstructorParameters<KEY>[0]} key
+   * @param {InstanceType<KEY>|common.FirstKeyParam<KEY>} key
    * @return {Promise<InstanceType<VALUE>|null>}
    */
   async get (key) {
@@ -229,8 +229,8 @@ class Table {
   }
 
   /**
-   * @param {InstanceType<KEY>|ConstructorParameters<KEY>[0]} key
-   * @param {InstanceType<VALUE>|ConstructorParameters<VALUE>[0]} value
+   * @param {InstanceType<KEY>|common.FirstKeyParam<KEY>} key
+   * @param {InstanceType<VALUE>|common.FirstKeyParam<VALUE>[0]} value
    */
   set (key, value) {
     this.t.put(encodeKey(this.K, key, 0), encodeValue(this.V, value))
@@ -244,7 +244,7 @@ class Table {
   /**
    * Only works with AutoKey
    *
-   * @param {InstanceType<VALUE>|ConstructorParameters<VALUE>[0]} value
+   * @param {InstanceType<VALUE>|common.FirstKeyParam<VALUE>[0]} value
    * @return {Promise<InstanceType<KEY>>}
    */
   async add (value) {
@@ -266,7 +266,7 @@ class Table {
   }
 
   /**
-   * @param {InstanceType<KEY>|ConstructorParameters<KEY>[0]} key
+   * @param {InstanceType<KEY>|common.FirstKeyParam<KEY>} key
    */
   remove (key) {
     const encodedKey = encodeKey(this.K, key, 0)

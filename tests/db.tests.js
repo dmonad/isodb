@@ -50,6 +50,36 @@ class CustomKeyValue {
 }
 
 /**
+ * @implements IEncodable
+ */
+class MultipleArgsParam {
+  /**
+   * @param {string} v
+   * @param {number} n
+   */
+  constructor (v, n) {
+    this.v = v
+    this.n = n
+  }
+
+  /**
+   * @param {encoding.Encoder} encoder
+   */
+  encode (encoder) {
+    encoding.writeVarString(encoder, this.v)
+    encoding.writeVarUint(encoder, this.n)
+  }
+
+  /**
+   * @param {decoding.Decoder} decoder
+   * @return {CustomKeyValue}
+   */
+  static decode (decoder) {
+    return new this(decoding.readVarString(decoder), decoding.readVarUint(decoder))
+  }
+}
+
+/**
  * @param {t.TestCase} tc
  */
 export const testIterator = async tc => {
@@ -306,6 +336,35 @@ export const testIterator = async tc => {
           read.push(k.v)
         })
         t.assert(read.length === 1 && read.every((v, _index) => v === ''))
+      })
+    })
+  }
+}
+
+/**
+ * @param {t.TestCase} tc
+ */
+export const testArgMagic = async tc => {
+  for (const iso of isoImpls) {
+    await t.groupAsync(iso.name, async () => {
+      await iso.deleteDB(getDbName(tc.testName))
+      const def = { tables: { multiarg: { key: MultipleArgsParam, value: iso.AnyValue }, singlearg: { key: iso.AutoKey, value: iso.AnyValue } } }
+      const db = await iso.openDB(getDbName(tc.testName), def)
+      db.transact(tr => {
+        /**
+         * @type {function(MultipleArgsParam):any}
+         */
+        const _mf = tr.tables.multiarg.get
+        /**
+         * @type {function(MultipleArgsParam|string):any}
+         */
+        // @ts-expect-error
+        const _mf2 = tr.tables.multiarg.get
+        /**
+         * @type {function(number):any}
+         */
+        const _sf = tr.tables.singlearg.get
+        console.log(_mf, _mf2, _sf)
       })
     })
   }
