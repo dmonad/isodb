@@ -362,7 +362,7 @@ export class ITable extends ITableReadonly {
 
   /**
    * @param {InstanceType<KEY>|FirstKeyParam<KEY>} _key
-   * @param {InstanceType<VALUE>|FirstKeyParam<VALUE>[0]} _value
+   * @param {InstanceType<VALUE>|FirstKeyParam<VALUE>} _value
    */
   set (_key, _value) {
     error.methodUnimplemented()
@@ -371,7 +371,7 @@ export class ITable extends ITableReadonly {
   /**
    * Only works with AutoKey
    *
-   * @param {InstanceType<VALUE>|FirstKeyParam<VALUE>[0]} _value
+   * @param {InstanceType<VALUE>|FirstKeyParam<VALUE>} _value
    * @return {Promise<InstanceType<KEY>>}
    */
   add (_value) {
@@ -424,7 +424,7 @@ export class IndexedTableReadonly {
   }
 
   /**
-   * @param {InstanceType<MKEY>|FirstKeyParam<MKEY>[0]} mkey
+   * @param {InstanceType<MKEY>|FirstKeyParam<MKEY>} mkey
    * @return {Promise<InstanceType<VALUE>|null>}
    */
   async get (mkey) {

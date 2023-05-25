@@ -126,7 +126,7 @@ class Table {
   }
 
   /**
-   * @param {InstanceType<KEY>|common.FirstKeyParam<Key>} key
+   * @param {InstanceType<KEY>|common.FirstKeyParam<KEY>} key
    * @return {Promise<InstanceType<VALUE>>}
    */
   async get (key) {
@@ -138,7 +138,7 @@ class Table {
   }
 
   /**
-   * @param {InstanceType<KEY>|common.FirstKeyParam<Key>} key
+   * @param {InstanceType<KEY>|common.FirstKeyParam<KEY>} key
    */
   remove (key) {
     const encodedKey = encodeKey(this.K, key)
@@ -255,8 +255,8 @@ class Table {
   }
 
   /**
-   * @param {InstanceType<KEY>|common.FirstKeyParam<Key>} key
-   * @param {InstanceType<VALUE>|common.FirstKeyParam<VALUE>[0]} value
+   * @param {InstanceType<KEY>|common.FirstKeyParam<KEY>} key
+   * @param {InstanceType<VALUE>|common.FirstKeyParam<VALUE>} value
    */
   set (key, value) {
     idb.put(this.store, /** @type {any} */ (encodeValue(this.V, value)), encodeKey(this.K, key))
@@ -272,7 +272,7 @@ class Table {
    * @todo make sure all puts are finished before running the next get or write request
    * This might already be handled everywhere but here.
    *
-   * @param {InstanceType<VALUE>|common.FirstKeyParam<VALUE>[0]} value
+   * @param {InstanceType<VALUE>|common.FirstKeyParam<VALUE>} value
    * @return {Promise<InstanceType<KEY>>}
    */
   async add (value) {

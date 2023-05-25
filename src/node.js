@@ -230,7 +230,7 @@ class Table {
 
   /**
    * @param {InstanceType<KEY>|common.FirstKeyParam<KEY>} key
-   * @param {InstanceType<VALUE>|common.FirstKeyParam<VALUE>[0]} value
+   * @param {InstanceType<VALUE>|common.FirstKeyParam<VALUE>} value
    */
   set (key, value) {
     this.t.put(encodeKey(this.K, key, 0), encodeValue(this.V, value))
@@ -244,7 +244,7 @@ class Table {
   /**
    * Only works with AutoKey
    *
-   * @param {InstanceType<VALUE>|common.FirstKeyParam<VALUE>[0]} value
+   * @param {InstanceType<VALUE>|common.FirstKeyParam<VALUE>} value
    * @return {Promise<InstanceType<KEY>>}
    */
   async add (value) {
