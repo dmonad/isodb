@@ -79,6 +79,32 @@ export class AnyValue {
 /**
  * @implements IEncodable
  */
+export class NoValue {
+  /**
+   * @param {null} v
+   */
+  constructor (v) {
+    this.v = v
+  }
+
+  /**
+   * @param {encoding.Encoder} _encoder
+   */
+  encode (_encoder) {
+  }
+
+  /**
+   * @param {decoding.Decoder} _decoder
+   * @return {NoValue}
+   */
+  static decode (_decoder) {
+    return new this(null)
+  }
+}
+
+/**
+ * @implements IEncodable
+ */
 export class CryptoKeyValue {
   /**
    * @param {CryptoKey} key
