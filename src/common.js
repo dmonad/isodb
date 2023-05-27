@@ -27,9 +27,9 @@ import * as rsa from 'lib0/crypto/rsa-oaep'
  */
 export class IEncodable {
   /**
-   * @param {any} _v
+   * @param {...any} _args
    */
-  constructor (_v) { } // eslint-disable-line
+  constructor (..._args) { } // eslint-disable-line
 
   /**
    * @param {encoding.Encoder} _encoder
