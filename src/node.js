@@ -1,6 +1,7 @@
 import * as common from './common.js'
 import * as encoding from 'lib0/encoding'
 import * as decoding from 'lib0/decoding'
+import * as binary from 'lib0/binary'
 import * as promise from 'lib0/promise'
 import * as error from 'lib0/error'
 import * as math from 'lib0/math'
@@ -9,6 +10,7 @@ import { KeyObject } from 'node:crypto'
 import * as lmdb from 'lmdb'
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
+import { string } from 'lib0'
 
 export * from './common.js'
 
@@ -32,7 +34,7 @@ const getLmdbKeyType = keytype => {
 /**
  * @template {typeof common.IEncodable} KEY
  * @param {KEY} K
- * @param {common.RangeOption<KEY>} range
+ * @param {Partial<common.PrefixedRangeOption<KEY>&common.StartEndRangeOption<KEY>>} range
  */
 const toNativeRange = (K, range) => {
   /**
@@ -44,6 +46,28 @@ const toNativeRange = (K, range) => {
   }
   if (range.end) {
     lrange.end = encodeKey(K, range.end, range.endExclusive === true ? 0 : (range.reverse ? -1 : 1))
+  }
+  if (range.prefix) {
+    const encodedPrefix = encodeKey(K, range.prefix, 0)
+    lrange.start = encodedPrefix
+    switch (encodedPrefix.constructor) {
+      case String:
+        lrange.end = encodedPrefix + string.fromCharCode(65535)
+        break
+      case Uint8Array: {
+        const encoder = encoding.createEncoder()
+        encoding.writeUint8Array(encoder, /** @type {Uint8Array} */ (encodedPrefix))
+        for (let i = 0; i < 255; i++) {
+          encoding.writeUint8(encoder, binary.BITS8)
+        }
+        lrange.end = encoding.toUint8Array(encoder)
+        break
+      }
+      /* c8 ignore next 3 */
+      default:
+        // we can only set String & UInt8Array as prefix
+        error.unexpectedCase()
+    }
   }
   if (range.reverse) {
     lrange.reverse = range.reverse
@@ -95,13 +119,20 @@ const encodeKey = (K, key, increment) => {
     case common.StringKey: {
       const k = /** @type {common.StringKey} */ (key).v + (increment === 1 ? ' ' : '')
       if (increment < 0 && k.length > 0) {
-        return k.slice(0, k.length - 1) + String.fromCharCode(k.charCodeAt(k.length - 1) - 1)
+        return k.slice(0, k.length - 1) + string.fromCharCode(k.charCodeAt(k.length - 1) - 1)
       }
       return k
     }
   }
   const encoder = encoding.createEncoder()
   key.encode(encoder)
+  /**
+   * A key can be incremented safely by adding a 0 to the byte array.
+   *
+   * A key can't be decremented safely. The proper decremented value of [255] would be [254, 255,
+   * 255, ...] (a value that can't be generated). However, we can append 255 255 times as a good
+   * approximation. When using lib0/encoding, this shouldn't lead to issues anyway.
+   */
   if (increment > 0) {
     encoding.writeUint8(encoder, 0)
   }
@@ -111,8 +142,14 @@ const encodeKey = (K, key, increment) => {
     const lastByte = buf[lastPos]
     if (lastByte === 0) {
       return buf.slice(0, lastPos)
+    } else {
+      for (let i = 0; i < 254; i++) {
+        encoding.writeUint8(encoder, binary.BITS8)
+      }
+      const res = encoding.toUint8Array(encoder)
+      res[lastPos]--
+      return res
     }
-    buf[lastPos]--
   }
   return buf
 }
@@ -183,7 +220,6 @@ class Table {
   }
 
   /**
-   * @todo rename entries
    * @param {common.RangeOption<KEY>} range
    * @return {Promise<Array<InstanceType<KEY>>>}
    */

@@ -6,6 +6,8 @@ import * as decoding from 'lib0/decoding'
 import * as error from 'lib0/error'
 import * as promise from 'lib0/promise'
 import * as buffer from 'lib0/buffer'
+import * as string from 'lib0/string'
+import * as binary from 'lib0/binary'
 
 export const name = 'isodb-indexeddb'
 
@@ -60,37 +62,59 @@ const getKeyDecoder = (keytype) => {
   switch (/** @type {any} */ (keytype)) {
     case common.AutoKey:
       /* c8 ignore next */
-      return id => id ? new common.AutoKey(id) : null
+      return id => id != null ? new common.AutoKey(id) : null
     case common.StringKey:
       /* c8 ignore next */
-      return id => id ? new common.StringKey(id) : null
+      return id => id != null ? new common.StringKey(id) : null
     default:
       /* c8 ignore next */
-      return id => id ? keytype.decode(decoding.createDecoder(buffer.createUint8ArrayFromArrayBuffer(id))) : null
+      return id => id != null ? keytype.decode(decoding.createDecoder(buffer.createUint8ArrayFromArrayBuffer(id))) : null
+  }
+}
+
+/**
+ * @param {string|number|Uint8Array} prefix
+ */
+const _appendBytesToPrefix = prefix => {
+  switch (prefix.constructor) {
+    case String:
+      return prefix + string.MAX_UTF16_CHARACTER
+    case Uint8Array:
+      return encoding.encode(encoder => {
+        encoding.writeUint8Array(encoder, /** @type {Uint8Array} */ (prefix))
+        encoding.writeUint8(encoder, binary.BITS8)
+      })
+    /* c8 ignore next 2 */
+    default:
+      error.unexpectedCase()
   }
 }
 
 /**
  * @template {typeof common.IEncodable} KEY
  * @param {KEY} K
- * @param {common.RangeOption<KEY>} range
+ * @param {Partial<common.PrefixedRangeOption<KEY>&common.StartEndRangeOption<KEY>>} range
  */
 const toNativeRange = (K, range) => {
+  const prefix = range.prefix
   const reverse = range.reverse === true
-  const startExclusive = range.startExclusive === true
-  const endExclusive = range.endExclusive === true
+  // @todo make sure that start/endExclusive is standardize (e.g. always inclusive by default)
+  const startExclusive = prefix != null ? false : range.startExclusive === true
+  const endExclusive = prefix != null ? true : range.endExclusive === true
   const lowerExclusive = reverse ? endExclusive : startExclusive
   const upperExclusive = reverse ? startExclusive : endExclusive
-  const lower = reverse ? range.end : range.start
-  const upper = reverse ? range.start : range.end
+  const start = prefix != null ? encodeKey(K, prefix) : (range.start && encodeKey(K, range.start))
+  const end = prefix != null ? _appendBytesToPrefix(encodeKey(K, prefix)) : (range.end && encodeKey(K, range.end))
+  const lower = reverse ? end : start
+  const upper = reverse ? start : end
   if (lower && upper) {
-    return idb.createIDBKeyRangeBound(encodeKey(K, lower), encodeKey(K, upper), lowerExclusive, upperExclusive)
+    return idb.createIDBKeyRangeBound(lower, upper, lowerExclusive, upperExclusive)
   }
   if (lower) {
-    return idb.createIDBKeyRangeLowerBound(encodeKey(K, lower), lowerExclusive)
+    return idb.createIDBKeyRangeLowerBound(lower, lowerExclusive)
   }
   if (upper) {
-    return idb.createIDBKeyRangeUpperBound(encodeKey(K, upper), upperExclusive)
+    return idb.createIDBKeyRangeUpperBound(upper, upperExclusive)
   }
   return null
 }

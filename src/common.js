@@ -5,6 +5,7 @@ import * as promise from 'lib0/promise'
 import * as ecdsa from 'lib0/crypto/ecdsa'
 import * as aes from 'lib0/crypto/aes-gcm'
 import * as rsa from 'lib0/crypto/rsa-oaep'
+import * as string from 'lib0/string'
 
 /**
  * @template {Object | undefined} T
@@ -98,6 +99,7 @@ export class NoValue {
    * @return {NoValue}
    */
   static decode (_decoder) {
+    /* c8 ignore next 2 */
     return new this(null)
   }
 }
@@ -199,6 +201,33 @@ export class Uint32Key {
 /**
  * @implements IEncodable
  */
+export class BinaryKey {
+  /**
+   * @param {Uint8Array} v
+   */
+  constructor (v) {
+    this.v = v
+  }
+
+  /**
+   * @param {encoding.Encoder} encoder
+   */
+  encode (encoder) {
+    encoding.writeUint8Array(encoder, this.v)
+  }
+
+  /**
+   * @param {decoding.Decoder} decoder
+   * @return {IEncodable}
+   */
+  static decode (decoder) {
+    return new this(decoding.readTailAsUint8Array(decoder))
+  }
+}
+
+/**
+ * @implements IEncodable
+ */
 export class StringKey {
   /**
    * @param {string} v
@@ -211,7 +240,7 @@ export class StringKey {
    * @param {encoding.Encoder} encoder
    */
   encode (encoder) {
-    encoding.writeVarString(encoder, this.v)
+    encoding.writeUint8Array(encoder, string.encodeUtf8(this.v))
   }
 
   /**
@@ -219,7 +248,7 @@ export class StringKey {
    * @return {IEncodable}
    */
   static decode (decoder) {
-    return new this(decoding.readVarString(decoder))
+    return new this(string.decodeUtf8(decoding.readTailAsUint8Array(decoder)))
   }
 }
 
@@ -285,13 +314,28 @@ export class StringValue {
 /**
  * @template {typeof IEncodable} KEY
  *
- * @typedef {Object} RangeOption
- * @property {InstanceType<KEY>|FirstKeyParam<KEY>} [RangeOption.start]
- * @property {boolean} [RangeOption.startExclusive]
- * @property {InstanceType<KEY>|FirstKeyParam<KEY>} [RangeOption.end]
- * @property {boolean} [RangeOption.endExclusive]
- * @property {boolean} [RangeOption.reverse]
- * @property {number} [RangeOption.limit] Number of items to receive
+ * @typedef {Object} StartEndRangeOption
+ * @property {InstanceType<KEY>|FirstKeyParam<KEY>} [start]
+ * @property {boolean} [startExclusive]
+ * @property {InstanceType<KEY>|FirstKeyParam<KEY>} [end]
+ * @property {boolean} [endExclusive]
+ * @property {boolean} [reverse]
+ * @property {number} [limit] Number of items to receive
+ */
+
+/**
+ * @template {typeof IEncodable} KEY
+ *
+ * @typedef {Object} PrefixedRangeOption
+ * @property {InstanceType<KEY>|FirstKeyParam<KEY>} PrefixedRangeOption.prefix
+ * @property {boolean} [reverse]
+ * @property {number} [limit] Number of items to receive
+ */
+
+/**
+ * @template {typeof IEncodable} KEY
+ *
+ * @typedef {PrefixedRangeOption<KEY>|StartEndRangeOption<KEY>} RangeOption
  */
 
 /**
@@ -301,9 +345,9 @@ export class StringValue {
  *
  * @interface
  * @typedef {Object} ICursor
- * @property {KEY} RangeOption.key
- * @property {VALUE} RangeOption.value
- * @property {FKEY} RangeOption.fkey
+ * @property {KEY} ICursor.key
+ * @property {VALUE} ICursor.value
+ * @property {FKEY} ICursor.fkey
  * @property {function():void} stop
  */
 
