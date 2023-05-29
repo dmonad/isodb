@@ -42,10 +42,10 @@ export const encodePrefix = (K, prefix) => {
     // expected either that prefix method is defined or that specified prefix is a buffer
     error.unexpectedCase()
   }
+  /* c8 ignore stop */
   if (K === StringKey || K === BinaryKey) {
     return prefix
   }
-  /* c8 ignore stop */
   return K.prefix(prefix)
 }
 
@@ -130,8 +130,8 @@ export class NoValue {
    * @param {decoding.Decoder} _decoder
    * @return {NoValue}
    */
+  /* c8 ignore next 3 */
   static decode (_decoder) {
-    /* c8 ignore next 2 */
     return new this(null)
   }
 }
