@@ -4,7 +4,7 @@ import * as rsa from 'lib0/crypto/rsa-oaep'
 import * as aes from 'lib0/crypto/aes-gcm'
 import * as encoding from 'lib0/encoding'
 import * as decoding from 'lib0/decoding'
-import { StringKey } from '../src/common.js'
+import { StringKey, BinaryKey } from '../src/common.js'
 
 /**
  * @type {Array<import('../src/node.js') | import('../src/browser.js')>}
@@ -916,6 +916,7 @@ export const testObjectStorage = async tc => {
 }
 
 class CustomStringKey extends StringKey { }
+class CustomBinaryKey extends BinaryKey { }
 
 /**
  * @param {t.TestCase} tc
@@ -927,8 +928,9 @@ export const testPrefix = async tc => {
       const def = {
         tables: {
           strings: { key: iso.StringKey, value: iso.NoValue },
-          cstrings: { key: CustomStringKey, value: iso.NoValue },
-          bin: { key: iso.BinaryKey, value: iso.NoValue }
+          cstrings: { key: CustomStringKey, value: iso.NoValue }, // testing the polyfill
+          bin: { key: iso.BinaryKey, value: iso.NoValue },
+          cbin: { key: CustomBinaryKey, value: iso.NoValue } // testing the polyfill
         }
       }
       const db = await iso.openDB(getDbName(tc.testName), def)
@@ -961,6 +963,7 @@ export const testPrefix = async tc => {
         // same as above
         const table = tr.tables.cstrings
         const ordered = [
+          '',
           'a',
           'a\0',
           'aa',
@@ -978,13 +981,37 @@ export const testPrefix = async tc => {
         const keys2 = await table.getKeys({ prefix: '' }).then(ks => ks.map(k => k.v))
         t.compare(ordered, keys2)
         const keys3 = await table.getKeys({ prefix: 'a' }).then(ks => ks.map(k => k.v))
-        t.compare(keys3, ordered)
+        t.compare(keys3, ordered.slice(1))
         const keys4 = await table.getKeys({ prefix: 'ab' }).then(ks => ks.map(k => k.v))
-        t.compare(keys4, ordered.slice(3, -2))
+        t.compare(keys4, ordered.slice(4, -2))
       }))
       await t.groupAsync('tables.bin', () => db.transact(async tr => {
         // same as above
         const table = tr.tables.bin
+        const ordered = [
+          new Uint8Array([0]),
+          new Uint8Array([0, 1]),
+          new Uint8Array([1]),
+          new Uint8Array([1, 0, 0]),
+          new Uint8Array([1, 0, 1]),
+          new Uint8Array([2])
+        ]
+        for (let i = ordered.length - 1; i >= 0; i--) {
+          table.set(ordered[i], null)
+        }
+        const keys1_ = await table.getKeys()
+        const keys1 = keys1_.map(k => new Uint8Array(k.v))
+        t.compare(ordered, keys1)
+        const keys2 = await table.getKeys({ prefix: new Uint8Array([]) }).then(ks => ks.map(k => new Uint8Array(k.v)))
+        t.compare(ordered, keys2)
+        const keys3 = await table.getKeys({ prefix: new Uint8Array([1]) }).then(ks => ks.map(k => new Uint8Array(k.v)))
+        t.compare(keys3, ordered.slice(2, -1))
+        const keys4 = await table.getKeys({ prefix: new Uint8Array([1, 0]) }).then(ks => ks.map(k => new Uint8Array(k.v)))
+        t.compare(keys4, ordered.slice(3, -1))
+      }))
+      await t.groupAsync('tables.cbin', () => db.transact(async tr => {
+        // same as above
+        const table = tr.tables.cbin
         const ordered = [
           new Uint8Array([0]),
           new Uint8Array([0, 1]),

@@ -2,12 +2,12 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Testing lib0</title>
+  <title>Testing isodb</title>
   <script type="importmap">
     {
       "imports": {
-  "isodb/package.json": "./package.json",
   "isodb": "./src/browser.js",
+  "isodb/package.json": "./package.json",
   "lib0/package.json": "./node_modules/lib0/package.json",
   "lib0": "./node_modules/lib0/index.js",
   "lib0/array.js": "./node_modules/lib0/array.js",
@@ -74,7 +74,7 @@
   "lib0/dist/list.cjs": "./node_modules/lib0/dist/list.cjs",
   "lib0/list": "./node_modules/lib0/list.js",
   "lib0/logging.js": "./node_modules/lib0/logging.js",
-  "lib0/dist/logging.cjs": "./node_modules/lib0/dist/logging.cjs",
+  "lib0/dist/logging.cjs": "./node_modules/lib0/dist/logging.node.cjs",
   "lib0/logging": "./node_modules/lib0/logging.js",
   "lib0/map.js": "./node_modules/lib0/map.js",
   "lib0/dist/map.cjs": "./node_modules/lib0/dist/map.cjs",
@@ -145,7 +145,10 @@
   "lib0/websocket.js": "./node_modules/lib0/websocket.js",
   "lib0/dist/websocket.cjs": "./node_modules/lib0/dist/websocket.cjs",
   "lib0/websocket": "./node_modules/lib0/websocket.js",
-  "lib0/webcrypto": "./node_modules/lib0/webcrypto.browser.js"
+  "lib0/webcrypto": "./node_modules/lib0/webcrypto.js",
+  "lib0/performance.js": "./node_modules/lib0/performance.js",
+  "lib0/dist/performance.cjs": "./node_modules/lib0/dist/performance.node.cjs",
+  "lib0/performance": "./node_modules/lib0/performance.js"
 },
       "scopes": {
   "./node_modules/lib0/": {

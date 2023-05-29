@@ -21,6 +21,34 @@ import * as string from 'lib0/string'
  * @typedef {T extends abstract new (arg: infer P) => any ? P : never} FirstKeyParam
  */
 
+/**
+ * @template {any} T
+ * @typedef {T extends { prefix: (arg: infer P) => Uint8Array } ? P : Uint8Array} KeyPrefixArg
+ */
+
+/**
+ * @todo move this to utils.js
+ *
+ * @param {any} K
+ * @param {any} prefix
+ * @return Uint8Array
+ */
+export const encodePrefix = (K, prefix) => {
+  /* c8 ignore start */
+  if (K.prefix == null) {
+    if (prefix && prefix.constructor === Uint8Array) {
+      return prefix
+    }
+    // expected either that prefix method is defined or that specified prefix is a buffer
+    error.unexpectedCase()
+  }
+  if (K === StringKey || K === BinaryKey) {
+    return prefix
+  }
+  /* c8 ignore stop */
+  return K.prefix(prefix)
+}
+
 /* c8 ignore start */
 /**
  * @interface
@@ -48,6 +76,11 @@ export class IEncodable {
   }
 }
 /* c8 ignore stop */
+
+/**
+ * @typedef {IEncodable} IEncodableKey
+ * @property {function(...any):Uint8Array} [prefix]
+ */
 
 /**
  * @template {IAny} V
@@ -91,8 +124,7 @@ export class NoValue {
   /**
    * @param {encoding.Encoder} _encoder
    */
-  encode (_encoder) {
-  }
+  encode (_encoder) { }
 
   /**
    * @param {decoding.Decoder} _decoder
@@ -199,7 +231,11 @@ export class Uint32Key {
 }
 
 /**
- * @implements IEncodable
+ * Note that this implementation should be polyfilled by node.js/browser.js. This is just an
+ * implementation that works exactly like the native implementation (however, it's quite
+ * inefficient).
+ *
+ * @implements IEncodableKey
  */
 export class BinaryKey {
   /**
@@ -213,7 +249,7 @@ export class BinaryKey {
    * @param {encoding.Encoder} encoder
    */
   encode (encoder) {
-    encoding.writeUint8Array(encoder, this.v)
+    encoding.writeTerminatedUint8Array(encoder, this.v)
   }
 
   /**
@@ -221,7 +257,14 @@ export class BinaryKey {
    * @return {IEncodable}
    */
   static decode (decoder) {
-    return new this(decoding.readTailAsUint8Array(decoder))
+    return new this(decoding.readTerminatedUint8Array(decoder))
+  }
+
+  /**
+   * @param {Uint8Array} prefix
+   */
+  static prefix (prefix) {
+    return encoding.encode(encoder => encoding.writeTerminatedUint8Array(encoder, prefix)).slice(0, -1) // remove terminating character
   }
 }
 
@@ -240,7 +283,7 @@ export class StringKey {
    * @param {encoding.Encoder} encoder
    */
   encode (encoder) {
-    encoding.writeUint8Array(encoder, string.encodeUtf8(this.v))
+    encoding.writeTerminatedString(encoder, this.v)
   }
 
   /**
@@ -248,7 +291,14 @@ export class StringKey {
    * @return {IEncodable}
    */
   static decode (decoder) {
-    return new this(string.decodeUtf8(decoding.readTailAsUint8Array(decoder)))
+    return new this(decoding.readTerminatedString(decoder))
+  }
+
+  /**
+   * @param {string} prefix
+   */
+  static prefix (prefix) {
+    return string.encodeUtf8(prefix)
   }
 }
 
@@ -327,7 +377,7 @@ export class StringValue {
  * @template {typeof IEncodable} KEY
  *
  * @typedef {Object} PrefixedRangeOption
- * @property {InstanceType<KEY>|FirstKeyParam<KEY>} PrefixedRangeOption.prefix
+ * @property {KeyPrefixArg<KEY>} PrefixedRangeOption.prefix
  * @property {boolean} [reverse]
  * @property {number} [limit] Number of items to receive
  */

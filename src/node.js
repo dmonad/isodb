@@ -48,7 +48,7 @@ const toNativeRange = (K, range) => {
     lrange.end = encodeKey(K, range.end, range.endExclusive === true ? 0 : (range.reverse ? -1 : 1))
   }
   if (range.prefix) {
-    const encodedPrefix = encodeKey(K, range.prefix, 0)
+    const encodedPrefix = common.encodePrefix(K, range.prefix)
     lrange.start = encodedPrefix
     switch (encodedPrefix.constructor) {
       case String:
@@ -123,9 +123,19 @@ const encodeKey = (K, key, increment) => {
       }
       return k
     }
+    case common.BinaryKey: {
+      if (increment === 0) {
+        return /** @type {common.BinaryKey} */ (key).v
+      }
+    }
   }
   const encoder = encoding.createEncoder()
-  key.encode(encoder)
+  /* c8 ignore next 2 */
+  if (K === common.BinaryKey) {
+    encoding.writeUint8Array(encoder, /** @type {common.BinaryKey} */ (key).v)
+  } else {
+    key.encode(encoder)
+  }
   /**
    * A key can be incremented safely by adding a 0 to the byte array.
    *
@@ -166,6 +176,9 @@ const getKeyDecoder = (keytype) => {
     case common.StringKey:
       /* c8 ignore next */
       return id => id == null ? null : new common.StringKey(id)
+    case common.BinaryKey:
+      /* c8 ignore next */
+      return id => id == null ? null : new common.BinaryKey(id)
     default:
       /* c8 ignore next */
       return id => id == null ? null : keytype.decode(decoding.createDecoder(id))

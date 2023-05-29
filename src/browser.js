@@ -48,6 +48,8 @@ const encodeKey = (K, key) => {
       return /** @type {common.AutoKey} */ (key).v
     case common.StringKey:
       return /** @type {common.StringKey} */ (key).v
+    case common.BinaryKey:
+      return /** @type {common.BinaryKey} */ (key).v
   }
   const encoder = encoding.createEncoder()
   key.encode(encoder)
@@ -66,6 +68,9 @@ const getKeyDecoder = (keytype) => {
     case common.StringKey:
       /* c8 ignore next */
       return id => id != null ? new common.StringKey(id) : null
+    case common.BinaryKey:
+      /* c8 ignore next */
+      return id => id != null ? new common.BinaryKey(id) : null
     default:
       /* c8 ignore next */
       return id => id != null ? keytype.decode(decoding.createDecoder(buffer.createUint8ArrayFromArrayBuffer(id))) : null
@@ -96,15 +101,15 @@ const _appendBytesToPrefix = prefix => {
  * @param {Partial<common.PrefixedRangeOption<KEY>&common.StartEndRangeOption<KEY>>} range
  */
 const toNativeRange = (K, range) => {
-  const prefix = range.prefix
+  const prefix = range.prefix != null ? common.encodePrefix(K, range.prefix) : null
   const reverse = range.reverse === true
   // @todo make sure that start/endExclusive is standardize (e.g. always inclusive by default)
   const startExclusive = prefix != null ? false : range.startExclusive === true
   const endExclusive = prefix != null ? true : range.endExclusive === true
   const lowerExclusive = reverse ? endExclusive : startExclusive
   const upperExclusive = reverse ? startExclusive : endExclusive
-  const start = prefix != null ? encodeKey(K, prefix) : (range.start && encodeKey(K, range.start))
-  const end = prefix != null ? _appendBytesToPrefix(encodeKey(K, prefix)) : (range.end && encodeKey(K, range.end))
+  const start = prefix != null ? prefix : (range.start && encodeKey(K, range.start))
+  const end = prefix != null ? _appendBytesToPrefix(prefix) : (range.end && encodeKey(K, range.end))
   const lower = reverse ? end : start
   const upper = reverse ? start : end
   if (lower && upper) {
