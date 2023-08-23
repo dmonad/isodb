@@ -1,4 +1,3 @@
-
 import * as error from 'lib0/error'
 import * as common from './common.js' // eslint-disable-line
 export * from './common.js'

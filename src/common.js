@@ -6,6 +6,7 @@ import * as ecdsa from 'lib0/crypto/ecdsa'
 import * as aes from 'lib0/crypto/aes-gcm'
 import * as rsa from 'lib0/crypto/rsa-oaep'
 import * as string from 'lib0/string'
+import * as jwt from 'lib0/crypto/jwt'
 
 /**
  * @template {Object | undefined} T
@@ -165,11 +166,11 @@ export class CryptoKeyValue {
     const jwk = decoding.readAny(decoder)
     switch (jwk.kty) {
       case 'RSA':
-        return new CryptoKeyValue(await rsa.importKey(jwk))
+        return new CryptoKeyValue(await rsa.importKeyJwk(jwk))
       case 'EC':
-        return new CryptoKeyValue(await ecdsa.importKey(jwk))
+        return new CryptoKeyValue(await ecdsa.importKeyJwk(jwk))
       case 'oct':
-        return new CryptoKeyValue(await aes.importKey(jwk))
+        return new CryptoKeyValue(await aes.importKeyJwk(jwk))
     }
     /* c8 ignore next */
     error.unexpectedCase()
@@ -326,6 +327,18 @@ export class StringValue {
    */
   static decode (decoder) {
     return new this(decoding.readVarString(decoder))
+  }
+}
+
+/**
+ * @implements IEncodable
+ */
+export class JwtValue extends StringValue {
+  /**
+   * @param {CryptoKey} publicKey
+   */
+  verify (publicKey) {
+    return jwt.verifyJwt(publicKey, this.v)
   }
 }
 

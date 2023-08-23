@@ -846,7 +846,7 @@ export const testCrypto = async tc => {
         t.assert(k5 == null)
       })
       await t.failsAsync(async () => {
-        await ecdsa.exportKey(keyPair1.privateKey)
+        await ecdsa.exportKeyJwk(keyPair1.privateKey)
       })
     })
   }
@@ -1032,6 +1032,32 @@ export const testPrefix = async tc => {
         t.compare(keys3, ordered.slice(2, -1))
         const keys4 = await table.getKeys({ prefix: new Uint8Array([1, 0]) }).then(ks => ks.map(k => k.v))
         t.compare(keys4, ordered.slice(3, -1))
+      }))
+    })
+  }
+}
+
+/**
+ * @param {t.TestCase} tc
+ */
+export const testDataTypes = async tc => {
+  for (const iso of isoImpls) {
+    await t.groupAsync(iso.name, async () => {
+      await iso.deleteDB(getDbName(tc.testName))
+      const def = {
+        tables: {
+          jwt: { key: iso.AutoKey, value: iso.JwtValue }
+        }
+      }
+      const db = await iso.openDB(getDbName(tc.testName), def)
+      await t.groupAsync('tables.strings', () => db.transact(async tr => {
+        const table = tr.tables.jwt
+        const key = await table.add(new iso.JwtValue('not working'))
+        const jwtVal = await table.get(key)
+        const keypair = await ecdsa.generateKeyPair()
+        await t.failsAsync(async () => {
+          await jwtVal?.verify(keypair.publicKey)
+        })
       }))
     })
   }
