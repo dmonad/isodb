@@ -1046,7 +1046,7 @@ export const testDataTypes = async tc => {
       await iso.deleteDB(getDbName(tc.testName))
       const def = {
         tables: {
-          jwt: { key: iso.AutoKey, value: iso.JwtValue }
+          jwt: { key: iso.AutoKey, value: /** @type {typeof iso.JwtValue<{ iss: number, rss: string }>} */ (iso.JwtValue) }
         }
       }
       const db = await iso.openDB(getDbName(tc.testName), def)
@@ -1057,6 +1057,9 @@ export const testDataTypes = async tc => {
         const keypair = await ecdsa.generateKeyPair()
         await t.failsAsync(async () => {
           await jwtVal?.verify(keypair.publicKey)
+        })
+        t.fails(() => {
+          jwtVal?.unsafeDecode()
         })
       }))
     })

@@ -331,6 +331,10 @@ export class StringValue {
 }
 
 /**
+ * @template { { iss: number } } PAYLOAD
+ *
+ * @todo could implement check verifying that this is indeed a jwt string. If so, we can use binary
+ * encoding and also support hashes.
  * @implements IEncodable
  */
 export class JwtValue extends StringValue {
@@ -339,6 +343,14 @@ export class JwtValue extends StringValue {
    */
   verify (publicKey) {
     return jwt.verifyJwt(publicKey, this.v)
+  }
+
+  /**
+   * Decode the value without verifying it.
+   * @return { { header: any, payload: PAYLOAD } }
+   */
+  unsafeDecode () {
+    return jwt.unsafeDecode(this.v)
   }
 }
 
