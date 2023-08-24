@@ -1046,7 +1046,7 @@ export const testDataTypes = async tc => {
       await iso.deleteDB(getDbName(tc.testName))
       const def = {
         tables: {
-          jwt: { key: iso.AutoKey, value: /** @type {typeof iso.JwtValue<{ iss: number, rss: string }>} */ (iso.JwtValue) }
+          jwt: { key: iso.AutoKey, value: /** @type {typeof iso.JwtValue<{ iat: number, rss: string }>} */ (iso.JwtValue) }
         }
       }
       const db = await iso.openDB(getDbName(tc.testName), def)

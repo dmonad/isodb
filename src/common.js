@@ -331,7 +331,7 @@ export class StringValue {
 }
 
 /**
- * @template { { iss: number } } PAYLOAD
+ * @template { { iat: number } } PAYLOAD
  *
  * @todo could implement check verifying that this is indeed a jwt string. If so, we can use binary
  * encoding and also support hashes.
