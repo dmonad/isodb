@@ -1,6 +1,6 @@
 {
   "name": "isodb",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "Isomorphic NoSQL Database",
   "sideEffects": false,
   "type": "module",
