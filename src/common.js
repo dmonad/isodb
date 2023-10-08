@@ -332,6 +332,7 @@ export class StringValue {
 
 /**
  * @template { { iat: number } } PAYLOAD
+ * @template {any} [HEADER=any]
  *
  * @todo could implement check verifying that this is indeed a jwt string. If so, we can use binary
  * encoding and also support hashes.
@@ -340,6 +341,7 @@ export class StringValue {
 export class JwtValue extends StringValue {
   /**
    * @param {CryptoKey} publicKey
+   * @return {Promise<{ header: HEADER, payload: PAYLOAD }>}
    */
   verify (publicKey) {
     return jwt.verifyJwt(publicKey, this.v)
@@ -347,7 +349,7 @@ export class JwtValue extends StringValue {
 
   /**
    * Decode the value without verifying it.
-   * @return { { header: any, payload: PAYLOAD } }
+   * @return { { header: HEADER, payload: PAYLOAD } }
    */
   unsafeDecode () {
     return jwt.unsafeDecode(this.v)
