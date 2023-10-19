@@ -580,7 +580,7 @@ export class IndexedTableReadonly {
   }
 
   /**
-   * @param {RangeOption<MKEY>} range
+   * @param {RangeOption<MKEY>} [range]
    * @return {Promise<Array<{ key: InstanceType<MKEY>, value: InstanceType<VALUE>, fkey: InstanceType<KEY>}>>}
    */
   async getEntries (range) {
@@ -590,7 +590,7 @@ export class IndexedTableReadonly {
   }
 
   /**
-   * @param {RangeOption<MKEY>} range
+   * @param {RangeOption<MKEY>} [range]
    * @return {Promise<Array<InstanceType<VALUE>>>}
    */
   async getValues (range) {
@@ -599,7 +599,7 @@ export class IndexedTableReadonly {
   }
 
   /**
-   * @param {RangeOption<MKEY>} range
+   * @param {RangeOption<MKEY>} [range]
    * @return {Promise<Array<InstanceType<MKEY>>>}
    */
   getKeys (range) {
