@@ -4,6 +4,7 @@ import * as rsa from 'lib0/crypto/rsa-oaep'
 import * as aes from 'lib0/crypto/aes-gcm'
 import * as encoding from 'lib0/encoding'
 import * as decoding from 'lib0/decoding'
+import * as promise from 'lib0/promise'
 import { StringKey, BinaryKey } from '../src/common.js'
 
 /**
@@ -1062,6 +1063,51 @@ export const testDataTypes = async tc => {
           jwtVal?.unsafeDecode()
         })
       }))
+    })
+  }
+}
+
+/**
+ * @param {t.TestCase} tc
+ */
+export const testPerf = async tc => {
+  for (const iso of isoImpls) {
+    await t.groupAsync(iso.name, async () => {
+      await iso.deleteDB(getDbName(tc.testName))
+      const def = {
+        tables: {
+          vals: { key: iso.AutoKey, value: iso.StringValue }
+        }
+      }
+      const db = await iso.openDB(getDbName(tc.testName), def)
+      const N = 100_000
+      await t.measureTimeAsync(`add ${N} keys`, async () => {
+        await db.transact(async tr => {
+          const table = tr.tables.vals
+          /**
+           * @type {Array<Promise<any>>}
+           */
+          const ps = []
+          for (let i = 0; i < N; i++) {
+            ps.push(table.add(new iso.StringValue(i + '')))
+          }
+          await promise.all(ps)
+        })
+      })
+      await t.measureTimeAsync(`read ${N} values`, async () => {
+        await db.transact(async tr => {
+          const table = tr.tables.vals
+          /**
+           * @type {Array<Promise<any>>}
+           */
+          const ps = []
+          for (let i = 1; i < N + 1; i++) {
+            const v = await table.get(i)
+            t.assert(v?.v === (i - 1) + '')
+          }
+          await promise.all(ps)
+        })
+      })
     })
   }
 }
