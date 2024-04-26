@@ -1084,28 +1084,18 @@ export const testPerf = async tc => {
       await t.measureTimeAsync(`add ${N} keys`, async () => {
         await db.transact(async tr => {
           const table = tr.tables.vals
-          /**
-           * @type {Array<Promise<any>>}
-           */
-          const ps = []
           for (let i = 0; i < N; i++) {
-            ps.push(table.add(new iso.StringValue(i + '')))
+            await table.add(new iso.StringValue(i + ''))
           }
-          await promise.all(ps)
         })
       })
       await t.measureTimeAsync(`read ${N} values`, async () => {
         await db.transact(async tr => {
           const table = tr.tables.vals
-          /**
-           * @type {Array<Promise<any>>}
-           */
-          const ps = []
           for (let i = 1; i < N + 1; i++) {
             const v = await table.get(i)
             t.assert(v?.v === (i - 1) + '')
           }
-          await promise.all(ps)
         })
       })
     })
