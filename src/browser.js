@@ -8,6 +8,7 @@ import * as promise from 'lib0/promise'
 import * as buffer from 'lib0/buffer'
 import * as string from 'lib0/string'
 import * as binary from 'lib0/binary'
+import * as time from 'lib0/time'
 
 export const name = 'isodb-indexeddb'
 
@@ -410,6 +411,11 @@ class DB {
      * @type {Transaction<DEF>?}
      */
     this._tr = null
+    /**
+     * @type {Promise<any>|null}
+     */
+    this._trP = null
+    this._trWaiting = 0
   }
 
   /**
@@ -419,15 +425,33 @@ class DB {
    * @return {Promise<T>}
    */
   transact (f) {
-    if (this._tr) return f(this._tr)
-    this._tr = new Transaction(this)
-    let res
-    try {
-      res = f(this._tr)
-    } finally {
-      this._tr = null
+    this._trWaiting++
+    const exec = async () => {
+      if (this._tr == null) {
+        this._tr = new Transaction(this)
+      }
+      /**
+       * @type {T}
+       */
+      let res
+      try {
+        const p = f(this._tr)
+        if (p && p.catch) p.catch(() => { this._tr = null })
+        res = await p
+      } finally {
+        this._trWaiting--
+        if (this._trWaiting === 0) {
+          this._tr = null
+        }
+      }
+      return res
     }
-    return res
+    if (this._trP) {
+      this._trP = this._trP.finally(exec)
+    } else {
+      this._trP = exec()
+    }
+    return this._trP
   }
 
   /**
