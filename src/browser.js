@@ -8,7 +8,6 @@ import * as promise from 'lib0/promise'
 import * as buffer from 'lib0/buffer'
 import * as string from 'lib0/string'
 import * as binary from 'lib0/binary'
-import * as time from 'lib0/time'
 
 export const name = 'isodb-indexeddb'
 

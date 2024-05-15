@@ -4,7 +4,6 @@ import * as rsa from 'lib0/crypto/rsa-oaep'
 import * as aes from 'lib0/crypto/aes-gcm'
 import * as encoding from 'lib0/encoding'
 import * as decoding from 'lib0/decoding'
-import * as promise from 'lib0/promise'
 import { StringKey, BinaryKey } from '../src/common.js'
 
 /**

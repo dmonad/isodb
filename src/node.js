@@ -478,7 +478,7 @@ class DB {
    * @return {Promise<T>}
    */
   async transact (f) {
-    return this.env.transaction(async () => f(new Transaction(this)))
+    return this.env.transaction(() => f(new Transaction(this)))
   }
 
   /**
@@ -486,7 +486,7 @@ class DB {
    * @param {function(common.ITransactionReadonly<DEF>): Promise<T>} f
    * @return {Promise<T>}
    */
-  async transactReadonly (f) {
+  transactReadonly (f) {
     return this.transact(f)
   }
 
