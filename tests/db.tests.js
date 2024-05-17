@@ -915,6 +915,55 @@ export const testObjectStorage = async tc => {
   }
 }
 
+/**
+ * @param {t.TestCase} tc
+ */
+export const testConcurrentTransactionBehavior = async tc => {
+  for (const iso of isoImpls) {
+    await iso.deleteDB(getDbName(tc.testName))
+    const db = await iso.openDB(getDbName(tc.testName), {
+      objects: {
+        obj1: {
+          val1: iso.StringValue
+        }
+      }
+    })
+    /**
+     * @type {Array<number>}
+     */
+    const events = []
+    db.transact(async tr => {
+      events.push(1)
+      tr.objects.obj1.set('val1', '1')
+      events.push(2)
+    })
+    db.transact(async tr => {
+      events.push(3)
+      tr.objects.obj1.set('val1', '2')
+      events.push(4)
+    })
+    await db.transact(async tr => {
+      events.push(5)
+      const v = await tr.objects.obj1.get('val1')
+      t.assert(v?.v === '2')
+      db.transact(async tr => {
+        events.push(7)
+        const v = await tr.objects.obj1.get('val1')
+        t.assert(v?.v === '2')
+        events.push(8)
+      })
+      events.push(6)
+    })
+    await db.transact(async tr => {
+      events.push(9)
+      const v = await tr.objects.obj1.get('val1')
+      t.assert(v?.v === '2')
+      events.push(10)
+    })
+    t.compare(events, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+  }
+}
+
 class CustomStringKey extends StringKey { }
 class CustomBinaryKey extends BinaryKey { }
 
