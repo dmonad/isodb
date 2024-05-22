@@ -89,7 +89,7 @@ export const testIterator = async tc => {
       await iso.deleteDB(getDbName(tc.testName))
       const def = { tables: { strings: { key: iso.StringKey, value: iso.AnyValue }, auto: { key: iso.AutoKey, value: iso.AnyValue }, bin: { key: CustomKeyValue, value: iso.AnyValue } } }
       const db = await iso.openDB(getDbName(tc.testName), def)
-      db.transact(tr => {
+      await db.transact(tr => {
         for (let i = 1; i < 30; i++) {
           tr.tables.auto.add(new iso.AnyValue({ i }))
         }
@@ -98,12 +98,12 @@ export const testIterator = async tc => {
           for (let i = 1; i < 9; i++) {
             tr.tables.strings.set(new iso.StringKey(i + ''), new iso.AnyValue(i + ''))
           }
-          // testing nested transaction (2)
-          db.transact(tr => {
-            for (let i = 1; i < 9; i++) {
-              tr.tables.bin.set(new CustomKeyValue(i + ''), new iso.AnyValue(i + ''))
-            }
-          })
+        })
+        // testing nested transaction (2)
+        db.transact(tr => {
+          for (let i = 1; i < 9; i++) {
+            tr.tables.bin.set(new CustomKeyValue(i + ''), new iso.AnyValue(i + ''))
+          }
         })
       })
       await db.transactReadonly(async tr => {
@@ -381,7 +381,7 @@ export const testUintKey = async tc => {
       const def = { tables: { uint: { key: iso.Uint32Key, value: iso.AnyValue } } }
       const db = await iso.openDB(getDbName(tc.testName), def)
       const N = 1000
-      db.transact(tr => {
+      await db.transact(tr => {
         for (let i = 0; i < N; i++) {
           if (i % 2) {
             tr.tables.uint.set(new iso.Uint32Key(i), new iso.AnyValue(i))
@@ -920,6 +920,57 @@ export const testObjectStorage = async tc => {
  */
 export const testConcurrentTransactionBehavior = async tc => {
   for (const iso of isoImpls) {
+    await t.groupAsync(iso.name, async () => {
+      await iso.deleteDB(getDbName(tc.testName))
+      const db = await iso.openDB(getDbName(tc.testName), {
+        objects: {
+          obj1: {
+            val1: iso.StringValue
+          }
+        }
+      })
+      /**
+       * @type {Array<number>}
+       */
+      const events = []
+      db.transact(async tr => {
+        events.push(1)
+        tr.objects.obj1.set('val1', '1')
+        events.push(2)
+      })
+      db.transact(async tr => {
+        events.push(3)
+        tr.objects.obj1.set('val1', '2')
+        events.push(4)
+      })
+      await db.transact(async tr => {
+        events.push(5)
+        tr.objects.obj1.set('val1', '1')
+        db.transact(async tr => {
+          events.push(7)
+          const v = await tr.objects.obj1.get('val1')
+          t.assert(v?.v === '3')
+          events.push(8)
+        })
+        tr.objects.obj1.set('val1', '3')
+        events.push(6)
+      })
+      await db.transact(async tr => {
+        events.push(9)
+        const v = await tr.objects.obj1.get('val1')
+        t.assert(v?.v === '3')
+        events.push(10)
+      })
+      t.compare(events, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+    })
+  }
+}
+
+/**
+ * @param {t.TestCase} tc
+ */
+export const testConsecutiveTransactionBehavior = async tc => {
+  for (const iso of isoImpls) {
     await iso.deleteDB(getDbName(tc.testName))
     const db = await iso.openDB(getDbName(tc.testName), {
       objects: {
@@ -932,12 +983,12 @@ export const testConcurrentTransactionBehavior = async tc => {
      * @type {Array<number>}
      */
     const events = []
-    db.transact(async tr => {
+    await db.transact(async tr => {
       events.push(1)
       tr.objects.obj1.set('val1', '1')
       events.push(2)
     })
-    db.transact(async tr => {
+    await db.transact(async tr => {
       events.push(3)
       tr.objects.obj1.set('val1', '2')
       events.push(4)
@@ -946,21 +997,9 @@ export const testConcurrentTransactionBehavior = async tc => {
       events.push(5)
       const v = await tr.objects.obj1.get('val1')
       t.assert(v?.v === '2')
-      db.transact(async tr => {
-        events.push(7)
-        const v = await tr.objects.obj1.get('val1')
-        t.assert(v?.v === '2')
-        events.push(8)
-      })
       events.push(6)
     })
-    await db.transact(async tr => {
-      events.push(9)
-      const v = await tr.objects.obj1.get('val1')
-      t.assert(v?.v === '2')
-      events.push(10)
-    })
-    t.compare(events, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+    t.compare(events, [1, 2, 3, 4, 5, 6])
   }
 }
 
@@ -1122,12 +1161,11 @@ export const testPerf = async tc => {
   for (const iso of isoImpls) {
     await t.groupAsync(iso.name, async () => {
       await iso.deleteDB(getDbName(tc.testName))
-      const def = {
+      const db = await iso.openDB(getDbName(tc.testName), {
         tables: {
           vals: { key: iso.AutoKey, value: iso.StringValue }
         }
-      }
-      const db = await iso.openDB(getDbName(tc.testName), def)
+      })
       const N = 100_000
       await t.measureTimeAsync(`add ${N} keys`, async () => {
         await db.transact(async tr => {
